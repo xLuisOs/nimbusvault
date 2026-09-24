@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# Node
+node_modules/
+dist/
+
+# Secretos: nunca se suben
+.env
+.env.local
+
+# Editores / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
