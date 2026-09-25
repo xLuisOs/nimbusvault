@@ -6,6 +6,7 @@ CREATE TABLE usuarios (
                           rol VARCHAR(50) NOT NULL DEFAULT 'usuario',
                           fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+#historial
 CREATE TABLE historial_accesos (
                                    id INT AUTO_INCREMENT PRIMARY KEY,
                                    usuario_id INT NOT NULL,
