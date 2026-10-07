@@ -25,6 +25,20 @@ services:
     ports:
       - "8025:8025"   # interfaz web
       - "1025:1025"   # SMTP
+  rustfs:
+    image: docker.io/rustfs/rustfs:latest
+    command: /data
+    environment:
+      RUSTFS_ACCESS_KEY: nimbus
+      RUSTFS_SECRET_KEY: nimbusstorage
+      RUSTFS_ADDRESS: ":9000"
+      RUSTFS_CONSOLE_ADDRESS: ":9001"
+      RUSTFS_CONSOLE_ENABLE: "true"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - rustfs_data:/data
 
   backend:
     build: ./backend
@@ -53,3 +67,4 @@ services:
 
 volumes:
   pgdata:
+  rustfs_data:

@@ -36,6 +36,13 @@ class Settings(BaseSettings):
     smtp_tls: bool = False
     email_remitente: str = "NimbusVault <no-reply@nimbusvault.local>"
 
+    # Almacenamiento S3 / MinIO
+    s3_endpoint_url: str = "http://rustfs:9000"
+    s3_access_key: str = "nimbus"
+    s3_secret_key: str = "nimbusstorage"
+    s3_bucket: str = "nimbusvault"
+    s3_region: str = "us-east-1"
+
     # Cookie del refresh token
     cookie_secure: bool = False
 
