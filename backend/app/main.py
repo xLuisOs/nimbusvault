@@ -5,8 +5,10 @@ from app.core.config import settings
 from app.modules.auth.router import router as auth_router
 from app.modules.planes.router import admin_router as admin_planes_router
 from app.modules.planes.router import router as planes_router
-from app.modules.planes.router import router as planes_router
-from app.modules.almacenamiento.router import router as archivos_router
+from app.modules.almacenamiento.router import (
+    carpetas_router,
+    router as archivos_router,
+)
 
 app = FastAPI(
     title=settings.app_name,
@@ -38,5 +40,6 @@ api.include_router(auth_router)
 api.include_router(planes_router)
 api.include_router(admin_planes_router)
 api.include_router(archivos_router)
+api.include_router(carpetas_router)
 
 app.include_router(api)
