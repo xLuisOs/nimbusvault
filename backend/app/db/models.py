@@ -8,3 +8,4 @@ from app.modules.auth.models import Rol, Sesion, TokenUsuario, Usuario  # noqa: 
 from app.modules.planes.models import Plan, PlanCaracteristica  # noqa: F401
 from app.modules.suscripciones.models import Suscripcion  # noqa: F401
 from app.modules.almacenamiento.models import Archivo, Carpeta
+from app.modules.pagos.models import Pago, MetodoPago  # noqa: F401

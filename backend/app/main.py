@@ -9,6 +9,10 @@ from app.modules.almacenamiento.router import (
     carpetas_router,
     router as archivos_router,
 )
+from app.modules.pagos.router import (
+    pagos_router,
+    router as pagos_suscripciones_router,
+)
 
 app = FastAPI(
     title=settings.app_name,
@@ -41,5 +45,7 @@ api.include_router(planes_router)
 api.include_router(admin_planes_router)
 api.include_router(archivos_router)
 api.include_router(carpetas_router)
+api.include_router(pagos_suscripciones_router)
+api.include_router(pagos_router)
 
 app.include_router(api)
