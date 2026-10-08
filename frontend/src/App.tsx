@@ -3,7 +3,7 @@
 // aquí los conectamos con react-router para no tener que reescribirlas.
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
-import ProtectedRoute, { rutaInicio } from "@/components/routing/ProtectedRoute";
+import ProtectedRoute, { RUTA_SIN_ACCESO, rutaInicio } from "@/components/routing/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import Landing from "@/pages/Landing";
 import Plans from "@/pages/Plans";
@@ -18,6 +18,7 @@ import FileExplorer from "@/pages/cliente/FileExplorer";
 import Payments from "@/pages/cliente/Payments";
 import Consumption from "@/pages/cliente/Consumption";
 import Admin from "@/pages/admin/Admin";
+import SinAcceso from "@/pages/SinAcceso";
 
 function useNavCliente() {
   const navigate = useNavigate();
@@ -44,7 +45,8 @@ function LoginRoute() {
       onBack={() => navigate("/")}
       onSignUp={() => navigate("/registro")}
       onForgot={() => navigate("/olvide-contrasena")}
-      onLoggedIn={(u) => navigate(u.rol === "ADMINISTRADOR" ? "/admin" : from ?? "/dashboard", { replace: true })}
+      // Si "from" es de otro rol, ProtectedRoute lo manda a su propio inicio
+      onLoggedIn={(u) => navigate(from ?? rutaInicio(u.rol), { replace: true })}
     />
   );
 }
@@ -56,12 +58,13 @@ function PlansRoute() {
     <Plans
       onHome={() => navigate("/")}
       onLogin={() => navigate("/login")}
-      onSignUp={() => navigate(usuario ? "/dashboard" : "/registro")}
-      onCheckout={(plan) =>
-        usuario
-          ? navigate("/checkout", { state: { plan } })
-          : navigate("/login", { state: { from: "/planes" } })
-      }
+      onSignUp={() => navigate(usuario ? rutaInicio(usuario.rol) : "/registro")}
+      onCheckout={(plan) => {
+        if (!usuario) navigate("/login", { state: { from: "/planes" } });
+        // Solo los clientes contratan planes
+        else if (usuario.rol !== "CLIENTE") navigate(rutaInicio(usuario.rol));
+        else navigate("/checkout", { state: { plan } });
+      }}
     />
   );
 }
@@ -102,6 +105,11 @@ export default function App() {
         <Route path="/consumo" element={<Consumption {...nav} />} />
         {/* Contratación real: Avance 2. Por ahora el checkout es solo la interfaz */}
         <Route path="/checkout" element={<CheckoutRoute />} />
+      </Route>
+
+      {/* Cualquier rol con sesión: destino de los roles sin panel propio */}
+      <Route element={<ProtectedRoute />}>
+        <Route path={RUTA_SIN_ACCESO} element={<SinAcceso />} />
       </Route>
 
       {/* Administrador */}
