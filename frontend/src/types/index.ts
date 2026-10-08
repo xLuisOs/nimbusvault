@@ -97,3 +97,28 @@ export interface UsoAlmacenamiento {
   disponible_bytes: number;
   porcentaje: number;
 }
+
+// ── Pagos (simulados) ────────────────────────────────────────────────────────
+
+export interface Pago {
+  id_pago: string;
+  numero_comprobante: string;
+  tipo: "contratacion" | "renovacion";
+  monto: string; // USD; decimal como texto
+  estado: "pendiente" | "aprobado" | "rechazado";
+  fecha_pago: string | null;
+  plan_codigo: string;
+  plan_nombre: string;
+  periodicidad: "mensual" | "anual";
+  vigencia_inicio: string;
+  vigencia_fin: string;
+  marca_tarjeta: "visa" | "mastercard" | "amex" | "otra" | null;
+  ultimos_4: string | null;
+}
+
+export interface TarjetaSimulada {
+  numero: string;
+  titular: string;
+  vencimiento: string; // MM/AA
+  cvv: string;
+}

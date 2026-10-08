@@ -95,7 +95,14 @@ function CheckoutRoute() {
   // Plan inexistente, inactivo o gratuito (el gratis no se paga): de vuelta al catálogo
   if (invalido || (plan && plan.price === 0)) return <Navigate to="/planes" replace />;
   if (!plan) return <PantallaCarga />;
-  return <Checkout plan={plan} onBack={() => navigate("/planes")} onDashboard={() => navigate("/dashboard")} />;
+  return (
+    <Checkout
+      plan={plan}
+      onBack={() => navigate("/planes")}
+      onDashboard={() => navigate("/dashboard")}
+      onPayments={() => navigate("/pagos")}
+    />
+  );
 }
 
 function AdminRoute() {
