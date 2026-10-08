@@ -1,13 +1,9 @@
-from tests.conftest import ADMIN, login, registrar_y_verificar
+from tests.conftest import ADMIN, auth, login, registrar_y_verificar
 
 NUEVO = {
     "codigo": "estudiante", "nombre": "Estudiante", "descripcion": "Plan para estudiantes",
     "precio_mensual": "2.50", "almacenamiento_gb": 15, "caracteristicas": ["15 GB", "Soporte por correo"],
 }
-
-
-def auth(token):
-    return {"Authorization": f"Bearer {token}"}
 
 
 def test_catalogo_publico_sin_login(client):

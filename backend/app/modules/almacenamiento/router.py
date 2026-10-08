@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from app.core.deps import get_usuario_actual
+from app.core.deps import requiere_cliente
 from app.core.storage import AlmacenS3, ErrorAlmacen, ObjetoNoEncontrado, get_almacen
 from app.db.session import get_db
 from app.modules.almacenamiento import service
@@ -16,7 +16,7 @@ router = APIRouter(tags=["Almacenamiento"])
 
 
 @router.get("/almacenamiento/uso", response_model=UsoOut)
-def uso(usuario: Usuario = Depends(get_usuario_actual), db: Session = Depends(get_db)):
+def uso(usuario: Usuario = Depends(requiere_cliente), db: Session = Depends(get_db)):
     return service.resumen_uso(db, usuario)
 
 
@@ -24,7 +24,7 @@ def uso(usuario: Usuario = Depends(get_usuario_actual), db: Session = Depends(ge
 
 @router.post("/carpetas", response_model=CarpetaOut, status_code=status.HTTP_201_CREATED)
 def crear_carpeta(
-    datos: CarpetaCrear, usuario: Usuario = Depends(get_usuario_actual), db: Session = Depends(get_db)
+    datos: CarpetaCrear, usuario: Usuario = Depends(requiere_cliente), db: Session = Depends(get_db)
 ):
     return service.crear_carpeta(db, usuario, datos)
 
@@ -32,7 +32,7 @@ def crear_carpeta(
 @router.get("/carpetas", response_model=list[CarpetaOut])
 def listar_carpetas(
     id_carpeta_padre: UUID | None = None,
-    usuario: Usuario = Depends(get_usuario_actual),
+    usuario: Usuario = Depends(requiere_cliente),
     db: Session = Depends(get_db),
 ):
     """Sin parámetro lista las carpetas de la raíz."""
@@ -41,7 +41,7 @@ def listar_carpetas(
 
 @router.delete("/carpetas/{id_carpeta}", status_code=status.HTTP_204_NO_CONTENT)
 def eliminar_carpeta(
-    id_carpeta: UUID, usuario: Usuario = Depends(get_usuario_actual), db: Session = Depends(get_db)
+    id_carpeta: UUID, usuario: Usuario = Depends(requiere_cliente), db: Session = Depends(get_db)
 ):
     service.eliminar_carpeta(db, usuario, id_carpeta)
 
@@ -52,7 +52,7 @@ def eliminar_carpeta(
 def subir(
     archivo: UploadFile = File(...),
     id_carpeta: UUID | None = Form(None),
-    usuario: Usuario = Depends(get_usuario_actual),
+    usuario: Usuario = Depends(requiere_cliente),
     db: Session = Depends(get_db),
     almacen: AlmacenS3 = Depends(get_almacen),
 ):
@@ -62,7 +62,7 @@ def subir(
 @router.get("/archivos", response_model=list[ArchivoOut])
 def listar(
     id_carpeta: UUID | None = None,
-    usuario: Usuario = Depends(get_usuario_actual),
+    usuario: Usuario = Depends(requiere_cliente),
     db: Session = Depends(get_db),
 ):
     """Sin parámetro lista los archivos de la raíz."""
@@ -72,7 +72,7 @@ def listar(
 @router.get("/archivos/{id_archivo}/descarga")
 def descargar(
     id_archivo: UUID,
-    usuario: Usuario = Depends(get_usuario_actual),
+    usuario: Usuario = Depends(requiere_cliente),
     db: Session = Depends(get_db),
     almacen: AlmacenS3 = Depends(get_almacen),
 ):
@@ -96,7 +96,7 @@ def descargar(
 @router.delete("/archivos/{id_archivo}", status_code=status.HTTP_204_NO_CONTENT)
 def eliminar(
     id_archivo: UUID,
-    usuario: Usuario = Depends(get_usuario_actual),
+    usuario: Usuario = Depends(requiere_cliente),
     db: Session = Depends(get_db),
     almacen: AlmacenS3 = Depends(get_almacen),
 ):
