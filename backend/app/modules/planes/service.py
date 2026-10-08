@@ -27,6 +27,14 @@ def listar_publicos(db: Session) -> list[PlanOut]:
     return [a_schema(p) for p in planes]
 
 
+def obtener_publico(db: Session, codigo: str) -> PlanOut:
+    """Detalle de un plan del catálogo: lo usa el checkout para no confiar en datos del navegador."""
+    plan = db.scalar(select(Plan).where(Plan.codigo == codigo, Plan.activo.is_(True)))
+    if plan is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Plan no encontrado")
+    return a_schema(plan)
+
+
 def listar_admin(db: Session) -> list[PlanAdminOut]:
     conteo = dict(db.execute(
         select(Suscripcion.id_plan, func.count())

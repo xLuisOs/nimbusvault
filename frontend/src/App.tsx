@@ -1,13 +1,15 @@
 // Rutas de la aplicación.
 // Las pantallas del Figma siguen recibiendo callbacks (onLogin, onPlans...);
 // aquí los conectamos con react-router para no tener que reescribirlas.
-import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
-import ProtectedRoute, { RUTA_SIN_ACCESO, rutaInicio } from "@/components/routing/ProtectedRoute";
+import { planesApi } from "@/api/planes";
+import ProtectedRoute, { PantallaCarga, RUTA_SIN_ACCESO, rutaInicio } from "@/components/routing/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import Landing from "@/pages/Landing";
 import Plans from "@/pages/Plans";
-import Checkout, { type CheckoutPlan } from "@/pages/Checkout";
+import Checkout, { aCheckoutPlan, type CheckoutPlan } from "@/pages/Checkout";
 import SignUp from "@/pages/auth/SignUp";
 import Login from "@/pages/auth/Login";
 import ForgotPassword from "@/pages/auth/ForgotPassword";
@@ -59,11 +61,13 @@ function PlansRoute() {
       onHome={() => navigate("/")}
       onLogin={() => navigate("/login")}
       onSignUp={() => navigate(usuario ? rutaInicio(usuario.rol) : "/registro")}
-      onCheckout={(plan) => {
-        if (!usuario) navigate("/login", { state: { from: "/planes" } });
+      onCheckout={(codigo, annual) => {
+        // El plan va en la URL: el checkout sobrevive a una recarga y se puede compartir el enlace
+        const destino = `/checkout?plan=${encodeURIComponent(codigo)}${annual ? "&periodo=anual" : ""}`;
+        if (!usuario) navigate("/login", { state: { from: destino } });
         // Solo los clientes contratan planes
         else if (usuario.rol !== "CLIENTE") navigate(rutaInicio(usuario.rol));
-        else navigate("/checkout", { state: { plan } });
+        else navigate(destino);
       }}
     />
   );
@@ -71,8 +75,26 @@ function PlansRoute() {
 
 function CheckoutRoute() {
   const navigate = useNavigate();
-  const plan = (useLocation().state as { plan?: CheckoutPlan } | null)?.plan;
-  if (!plan) return <Navigate to="/planes" replace />;
+  const [params] = useSearchParams();
+  const codigo = params.get("plan");
+  const annual = params.get("periodo") === "anual";
+  const [plan, setPlan] = useState<CheckoutPlan | null>(null);
+  const [invalido, setInvalido] = useState(!codigo);
+
+  // Precio y características salen de la API (GET /api/planes/{codigo}), no del navegador
+  useEffect(() => {
+    if (!codigo) return;
+    let vivo = true;
+    planesApi
+      .obtener(codigo)
+      .then((p) => vivo && setPlan(aCheckoutPlan(p, annual)))
+      .catch(() => vivo && setInvalido(true));
+    return () => { vivo = false; };
+  }, [codigo, annual]);
+
+  // Plan inexistente, inactivo o gratuito (el gratis no se paga): de vuelta al catálogo
+  if (invalido || (plan && plan.price === 0)) return <Navigate to="/planes" replace />;
+  if (!plan) return <PantallaCarga />;
   return <Checkout plan={plan} onBack={() => navigate("/planes")} onDashboard={() => navigate("/dashboard")} />;
 }
 

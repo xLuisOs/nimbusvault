@@ -1,17 +1,39 @@
 import { useState } from "react";
 
-import { formatoDolares } from "@/utils/format";
+import type { Plan } from "@/types";
+import { formatoDolares, formatoGB } from "@/utils/format";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface CheckoutPlan {
-  id: string;
+  id: string; // código del plan
+  idPlan: string;
   name: string;
   storage: string;
-  price: number;
+  price: number; // mensual, o mensualizado con descuento si es anual
   annual: boolean;
+  discountPct: number;
+  vigencia: number; // días que dura el ciclo mensual
+  features: string[];
   color: string;
   colorBg: string;
+}
+
+/** Adapta el plan de la API (GET /api/planes/{codigo}) a lo que dibuja el checkout. */
+export function aCheckoutPlan(p: Plan, annual: boolean): CheckoutPlan {
+  return {
+    id: p.codigo,
+    idPlan: p.id_plan,
+    name: p.nombre,
+    storage: formatoGB(p.almacenamiento_gb),
+    price: Number(annual ? p.precio_anual_mensualizado : p.precio_mensual),
+    annual,
+    discountPct: p.descuento_anual_pct,
+    vigencia: p.vigencia_dias,
+    features: p.caracteristicas,
+    color: p.color,
+    colorBg: p.color + "14", // mismo color con ~8 % de opacidad
+  };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -34,9 +56,9 @@ function startDate() {
   return new Date().toLocaleDateString("es-GT", { day: "numeric", month: "long", year: "numeric" });
 }
 
-function nextBillingDate(annual: boolean) {
+function nextBillingDate(annual: boolean, vigenciaDias: number) {
   const d = new Date();
-  annual ? d.setFullYear(d.getFullYear() + 1) : d.setMonth(d.getMonth() + 1);
+  annual ? d.setFullYear(d.getFullYear() + 1) : d.setDate(d.getDate() + vigenciaDias);
   return d.toLocaleDateString("es-GT", { day: "numeric", month: "long", year: "numeric" });
 }
 
@@ -199,7 +221,7 @@ function PlanSummary({ plan }: { plan: CheckoutPlan }) {
                   className="text-[10px] font-bold px-2 py-0.5 rounded-full"
                   style={{ background: "#E0FBF9", color: "#00C896" }}
                 >
-                  Anual −20%
+                  Anual −{plan.discountPct}%
                 </span>
               )}
             </div>
@@ -236,7 +258,7 @@ function PlanSummary({ plan }: { plan: CheckoutPlan }) {
         >
           {[
             { label: "Fecha de inicio", value: startDate() },
-            { label: "Próxima factura", value: nextBillingDate(plan.annual) },
+            { label: "Próxima factura", value: nextBillingDate(plan.annual, plan.vigencia) },
             { label: "Ciclo de facturación", value: plan.annual ? "Anual" : "Mensual" },
           ].map(({ label, value }) => (
             <div key={label} className="flex items-center justify-between">
@@ -555,7 +577,7 @@ function SuccessState({ plan, onDashboard }: SuccessProps) {
       <p className="text-xs" style={{ color: "#94A3B8" }}>
         Próxima factura el{" "}
         <span className="font-semibold" style={{ color: "#64748B" }}>
-          {nextBillingDate(plan.annual)}
+          {nextBillingDate(plan.annual, plan.vigencia)}
         </span>
       </p>
     </div>
@@ -693,13 +715,7 @@ export default function Checkout({ plan, onBack, onDashboard }: CheckoutProps) {
                   Incluido en tu plan
                 </p>
                 <ul className="flex flex-col gap-2.5">
-                  {[
-                    "Almacenamiento " + plan.storage,
-                    "SSL y cifrado en reposo",
-                    "Backups automáticos diarios",
-                    "Panel de control completo",
-                    "Soporte por correo",
-                  ].map((f) => (
+                  {plan.features.map((f) => (
                     <li key={f} className="flex items-center gap-2.5 text-sm" style={{ color: "#334155" }}>
                       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="flex-shrink-0">
                         <circle cx="8" cy="8" r="7" fill="#00C896" fillOpacity="0.15" />

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import type { CheckoutPlan } from "./Checkout";
 import { usePlanes } from "@/api/planes";
 import type { Plan } from "@/types";
 import { formatoGB, formatoDolares } from "@/utils/format";
@@ -19,6 +18,7 @@ interface PlanVista {
   features: string[];
   gb: number;
   vigencia: number;
+  discountPct: number;
 }
 
 function aVista(p: Plan): PlanVista {
@@ -34,7 +34,16 @@ function aVista(p: Plan): PlanVista {
     features: p.caracteristicas,
     gb: p.almacenamiento_gb,
     vigencia: p.vigencia_dias,
+    discountPct: p.descuento_anual_pct,
   };
+}
+
+/** Texto del descuento anual para el interruptor, según lo que diga cada plan de pago. */
+function etiquetaDescuento(plans: PlanVista[]): string | null {
+  const descuentos = plans.filter((p) => p.price > 0 && p.discountPct > 0).map((p) => p.discountPct);
+  if (!descuentos.length) return null;
+  const max = Math.max(...descuentos);
+  return descuentos.every((d) => d === max) ? `−${max}%` : `hasta −${max}%`;
 }
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
@@ -136,9 +145,11 @@ function Header({ onHome, onLogin, onSignUp }: HeaderProps) {
 function BillingToggle({
   annual,
   onChange,
+  descuento,
 }: {
   annual: boolean;
   onChange: (v: boolean) => void;
+  descuento: string | null;
 }) {
   return (
     <div className="flex items-center gap-3 justify-center">
@@ -167,12 +178,14 @@ function BillingToggle({
         style={{ color: annual ? "#0F172A" : "#94A3B8" }}
       >
         Anual
-        <span
-          className="text-xs font-bold px-1.5 py-0.5 rounded-full"
-          style={{ background: "#E0FBF9", color: "#00C896" }}
-        >
-          −20%
-        </span>
+        {descuento && (
+          <span
+            className="text-xs font-bold px-1.5 py-0.5 rounded-full"
+            style={{ background: "#E0FBF9", color: "#00C896" }}
+          >
+            {descuento}
+          </span>
+        )}
       </button>
     </div>
   );
@@ -490,7 +503,7 @@ interface PlansProps {
   onHome: () => void;
   onLogin: () => void;
   onSignUp: () => void;
-  onCheckout: (plan: CheckoutPlan) => void;
+  onCheckout: (codigo: string, annual: boolean) => void;
 }
 
 export default function Plans({ onHome, onLogin, onSignUp, onCheckout }: PlansProps) {
@@ -502,10 +515,8 @@ export default function Plans({ onHome, onLogin, onSignUp, onCheckout }: PlansPr
     const p = PLANS.find((x) => x.id === id);
     if (!p) return;
     if (p.price === 0) { onSignUp(); return; }
-    onCheckout({
-      id: p.id, name: p.name, storage: p.storage, color: p.color, colorBg: p.colorBg,
-      annual, price: annual ? p.priceAnnual : p.price,
-    });
+    // El checkout vuelve a pedir el plan a la API: no se confía en el precio que trae el navegador
+    onCheckout(p.id, annual);
   }
 
   return (
@@ -542,7 +553,7 @@ export default function Plans({ onHome, onLogin, onSignUp, onCheckout }: PlansPr
         >
           Sin costes ocultos. Cancela cuando quieras. Empieza gratis hoy mismo.
         </p>
-        <BillingToggle annual={annual} onChange={setAnnual} />
+        <BillingToggle annual={annual} onChange={setAnnual} descuento={etiquetaDescuento(PLANS)} />
       </section>
 
       {/* Cards */}
@@ -552,6 +563,9 @@ export default function Plans({ onHome, onLogin, onSignUp, onCheckout }: PlansPr
           <p className="text-center text-sm py-16 font-semibold" style={{ color: "#E5484D" }}>
             No se pudieron cargar los planes: {error}
           </p>
+        )}
+        {!cargando && !error && PLANS.length === 0 && (
+          <p className="text-center text-sm py-16" style={{ color: "#94A3B8" }}>Aún no hay planes disponibles.</p>
         )}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 items-end pt-6">
           {PLANS.map((plan) => (
