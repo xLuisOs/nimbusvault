@@ -10,8 +10,13 @@ from app.modules.planes.schemas import PlanActualizar, PlanAdminOut, PlanCrear, 
 from app.modules.suscripciones.models import ESTADO_ACTIVA, Suscripcion
 
 
+def precio_anual_mensualizado(plan: Plan) -> Decimal:
+    """Precio por mes pagando el año completo (con el descuento anual aplicado)."""
+    return (plan.precio_mensual * (100 - plan.descuento_anual_pct) / 100).quantize(Decimal("0.01"), ROUND_HALF_UP)
+
+
 def a_schema(plan: Plan) -> PlanOut:
-    anual = (plan.precio_mensual * (100 - plan.descuento_anual_pct) / 100).quantize(Decimal("0.01"), ROUND_HALF_UP)
+    anual = precio_anual_mensualizado(plan)
     return PlanOut(
         **{c: getattr(plan, c) for c in (
             "id_plan", "codigo", "nombre", "descripcion", "precio_mensual", "descuento_anual_pct",

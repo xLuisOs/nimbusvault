@@ -11,3 +11,4 @@ pyjwt==2.10.1
 boto3==1.43.108
 python-multipart==0.0.32
 requests==2.31.0
+reportlab==4.2.5
