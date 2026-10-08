@@ -65,3 +65,35 @@ export interface PlanFormulario {
   color: string;
   caracteristicas: string[];
 }
+
+// ── Almacenamiento (explorador de archivos) ──────────────────────────────────
+
+export interface Carpeta {
+  id_carpeta: string;
+  id_carpeta_padre: string | null;
+  nombre: string;
+  creado_en: string;
+}
+
+export interface Archivo {
+  id_archivo: string;
+  id_carpeta: string | null;
+  nombre_original: string;
+  tipo_mime: string;
+  tamano_bytes: number;
+  creado_en: string;
+}
+
+/** Un eslabón del breadcrumb, de la raíz hacia la carpeta actual. */
+export interface RutaItem {
+  id_carpeta: string;
+  nombre: string;
+}
+
+export interface UsoAlmacenamiento {
+  plan: string;
+  usado_bytes: number;
+  cuota_bytes: number;
+  disponible_bytes: number;
+  porcentaje: number;
+}
