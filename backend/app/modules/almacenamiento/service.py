@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.storage import AlmacenS3, ErrorAlmacen
 from app.modules.almacenamiento.models import Archivo, Carpeta
-from app.modules.almacenamiento.schemas import CarpetaCrear
+from app.modules.almacenamiento.schemas import ArchivoActualizar, CarpetaActualizar, CarpetaCrear
 from app.modules.auth.models import Usuario
 from app.modules.suscripciones.models import Suscripcion
 from app.modules.suscripciones.service import suscripcion_activa
@@ -62,9 +62,24 @@ def _carpeta_propia(db: Session, usuario: Usuario, id_carpeta: UUID) -> Carpeta:
     return carpeta
 
 
+def _nombre_libre(
+    db: Session, usuario: Usuario, id_padre: UUID | None, nombre: str, excluir: UUID | None = None
+) -> None:
+    """Dos carpetas hermanas no pueden llamarse igual (sin distinguir mayúsculas)."""
+    q = select(Carpeta.id_carpeta).where(
+        Carpeta.id_usuario == usuario.id_usuario, func.lower(Carpeta.nombre) == nombre.lower()
+    )
+    q = q.where(Carpeta.id_carpeta_padre == id_padre) if id_padre else q.where(Carpeta.id_carpeta_padre.is_(None))
+    if excluir is not None:
+        q = q.where(Carpeta.id_carpeta != excluir)
+    if db.scalar(q.limit(1)) is not None:
+        raise HTTPException(409, f"Ya existe una carpeta llamada «{nombre}» en esta ubicación")
+
+
 def crear_carpeta(db: Session, usuario: Usuario, datos: CarpetaCrear) -> Carpeta:
     if datos.id_carpeta_padre is not None:
         _carpeta_propia(db, usuario, datos.id_carpeta_padre)
+    _nombre_libre(db, usuario, datos.id_carpeta_padre, datos.nombre)
     carpeta = Carpeta(
         id_usuario=usuario.id_usuario, id_carpeta_padre=datos.id_carpeta_padre, nombre=datos.nombre
     )
@@ -80,6 +95,28 @@ def listar_carpetas(db: Session, usuario: Usuario, id_padre: UUID | None) -> lis
     q = select(Carpeta).where(Carpeta.id_usuario == usuario.id_usuario)
     q = q.where(Carpeta.id_carpeta_padre == id_padre) if id_padre else q.where(Carpeta.id_carpeta_padre.is_(None))
     return list(db.scalars(q.order_by(Carpeta.nombre)))
+
+
+def renombrar_carpeta(db: Session, usuario: Usuario, id_carpeta: UUID, datos: CarpetaActualizar) -> Carpeta:
+    carpeta = _carpeta_propia(db, usuario, id_carpeta)
+    _nombre_libre(db, usuario, carpeta.id_carpeta_padre, datos.nombre, excluir=carpeta.id_carpeta)
+    carpeta.nombre = datos.nombre
+    db.commit()
+    db.refresh(carpeta)
+    return carpeta
+
+
+def ruta_carpeta(db: Session, usuario: Usuario, id_carpeta: UUID) -> list[Carpeta]:
+    """Ancestros de la carpeta, de la raíz hacia ella (para el breadcrumb del explorador)."""
+    ruta = [_carpeta_propia(db, usuario, id_carpeta)]
+    vistos = {id_carpeta}
+    while ruta[0].id_carpeta_padre is not None and ruta[0].id_carpeta_padre not in vistos:
+        padre = db.get(Carpeta, ruta[0].id_carpeta_padre)
+        if padre is None:
+            break
+        vistos.add(padre.id_carpeta)
+        ruta.insert(0, padre)
+    return ruta
 
 
 def eliminar_carpeta(db: Session, usuario: Usuario, id_carpeta: UUID) -> None:
@@ -184,6 +221,24 @@ def obtener_archivo(db: Session, usuario: Usuario, id_archivo: UUID) -> Archivo:
     archivo = db.get(Archivo, id_archivo)
     if archivo is None or archivo.id_usuario != usuario.id_usuario or archivo.eliminado_en is not None:
         raise HTTPException(404, "Archivo no encontrado")
+    return archivo
+
+
+def actualizar_archivo(db: Session, usuario: Usuario, id_archivo: UUID, datos: ArchivoActualizar) -> Archivo:
+    """Renombra y/o mueve. Solo cambia la base: la llave del objeto en el bucket no depende del nombre ni de la carpeta."""
+    archivo = obtener_archivo(db, usuario, id_archivo)
+    cambia_carpeta = "id_carpeta" in datos.model_fields_set
+    if datos.nombre_original is None and not cambia_carpeta:
+        raise HTTPException(400, "Indica el nuevo nombre o la carpeta de destino")
+
+    if datos.nombre_original is not None:
+        archivo.nombre_original = _nombre_seguro(datos.nombre_original)
+    if cambia_carpeta:
+        if datos.id_carpeta is not None:
+            _carpeta_propia(db, usuario, datos.id_carpeta)  # 404 si el destino es de otra persona
+        archivo.id_carpeta = datos.id_carpeta
+    db.commit()
+    db.refresh(archivo)
     return archivo
 
 

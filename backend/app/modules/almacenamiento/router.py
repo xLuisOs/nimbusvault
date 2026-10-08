@@ -9,7 +9,9 @@ from app.core.deps import requiere_cliente
 from app.core.storage import AlmacenS3, ErrorAlmacen, ObjetoNoEncontrado, get_almacen
 from app.db.session import get_db
 from app.modules.almacenamiento import service
-from app.modules.almacenamiento.schemas import ArchivoOut, CarpetaCrear, CarpetaOut, UsoOut
+from app.modules.almacenamiento.schemas import (
+    ArchivoActualizar, ArchivoOut, CarpetaActualizar, CarpetaCrear, CarpetaOut, RutaItem, UsoOut,
+)
 from app.modules.auth.models import Usuario
 
 router = APIRouter(tags=["Almacenamiento"])
@@ -37,6 +39,24 @@ def listar_carpetas(
 ):
     """Sin parámetro lista las carpetas de la raíz."""
     return service.listar_carpetas(db, usuario, id_carpeta_padre)
+
+
+@router.patch("/carpetas/{id_carpeta}", response_model=CarpetaOut)
+def renombrar_carpeta(
+    id_carpeta: UUID,
+    datos: CarpetaActualizar,
+    usuario: Usuario = Depends(requiere_cliente),
+    db: Session = Depends(get_db),
+):
+    return service.renombrar_carpeta(db, usuario, id_carpeta, datos)
+
+
+@router.get("/carpetas/{id_carpeta}/ruta", response_model=list[RutaItem])
+def ruta_carpeta(
+    id_carpeta: UUID, usuario: Usuario = Depends(requiere_cliente), db: Session = Depends(get_db)
+):
+    """Breadcrumb: de la raíz hasta la carpeta indicada (incluida)."""
+    return service.ruta_carpeta(db, usuario, id_carpeta)
 
 
 @router.delete("/carpetas/{id_carpeta}", status_code=status.HTTP_204_NO_CONTENT)
@@ -91,6 +111,17 @@ def descargar(
             "Content-Length": str(archivo.tamano_bytes),
         },
     )
+
+
+@router.patch("/archivos/{id_archivo}", response_model=ArchivoOut)
+def actualizar(
+    id_archivo: UUID,
+    datos: ArchivoActualizar,
+    usuario: Usuario = Depends(requiere_cliente),
+    db: Session = Depends(get_db),
+):
+    """Renombrar (`nombre_original`) y/o mover (`id_carpeta`; `null` = raíz)."""
+    return service.actualizar_archivo(db, usuario, id_archivo, datos)
 
 
 @router.delete("/archivos/{id_archivo}", status_code=status.HTTP_204_NO_CONTENT)
