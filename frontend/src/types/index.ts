@@ -65,3 +65,60 @@ export interface PlanFormulario {
   color: string;
   caracteristicas: string[];
 }
+
+// ── Almacenamiento (explorador de archivos) ──────────────────────────────────
+
+export interface Carpeta {
+  id_carpeta: string;
+  id_carpeta_padre: string | null;
+  nombre: string;
+  creado_en: string;
+}
+
+export interface Archivo {
+  id_archivo: string;
+  id_carpeta: string | null;
+  nombre_original: string;
+  tipo_mime: string;
+  tamano_bytes: number;
+  creado_en: string;
+}
+
+/** Un eslabón del breadcrumb, de la raíz hacia la carpeta actual. */
+export interface RutaItem {
+  id_carpeta: string;
+  nombre: string;
+}
+
+export interface UsoAlmacenamiento {
+  plan: string;
+  usado_bytes: number;
+  cuota_bytes: number;
+  disponible_bytes: number;
+  porcentaje: number;
+}
+
+// ── Pagos (simulados) ────────────────────────────────────────────────────────
+
+export interface Pago {
+  id_pago: string;
+  numero_comprobante: string;
+  tipo: "contratacion" | "renovacion";
+  monto: string; // USD; decimal como texto
+  estado: "pendiente" | "aprobado" | "rechazado";
+  fecha_pago: string | null;
+  plan_codigo: string;
+  plan_nombre: string;
+  periodicidad: "mensual" | "anual";
+  vigencia_inicio: string;
+  vigencia_fin: string;
+  marca_tarjeta: "visa" | "mastercard" | "amex" | "otra" | null;
+  ultimos_4: string | null;
+}
+
+export interface TarjetaSimulada {
+  numero: string;
+  titular: string;
+  vencimiento: string; // MM/AA
+  cvv: string;
+}

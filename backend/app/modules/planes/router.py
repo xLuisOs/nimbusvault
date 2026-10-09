@@ -17,6 +17,11 @@ def listar(db: Session = Depends(get_db)):
     return service.listar_publicos(db)
 
 
+@router.get("/{codigo}", response_model=PlanOut)
+def obtener(codigo: str, db: Session = Depends(get_db)):
+    return service.obtener_publico(db, codigo)
+
+
 # Administración de planes (RF-18 / CU-04)
 admin_router = APIRouter(prefix="/admin/planes", tags=["Admin · Planes"], dependencies=[Depends(requiere_admin)])
 

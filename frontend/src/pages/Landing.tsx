@@ -544,6 +544,9 @@ function Pricing({ onSignUp, onPlans }: { onSignUp: () => void; onPlans: () => v
 
         {cargando && <p className="text-center text-sm" style={{ color: "#64748B" }}>Cargando planes…</p>}
         {error && <p className="text-center text-sm font-semibold" style={{ color: "#E5484D" }}>No se pudieron cargar los planes.</p>}
+        {!cargando && !error && PLANS.length === 0 && (
+          <p className="text-center text-sm" style={{ color: "#64748B" }}>Aún no hay planes disponibles.</p>
+        )}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 items-start">
           {PLANS.map(({ name, price, period, storage, desc, features, cta, featured, color, gratis }) => (
             <div
@@ -732,7 +735,10 @@ export default function Landing() {
       <main>
         <Hero onSignUp={() => navigate(usuario ? rutaInicio(usuario.rol) : "/registro")} />
         <Features />
-        <Pricing onSignUp={() => navigate("/registro")} onPlans={() => navigate("/planes")} />
+        <Pricing
+          onSignUp={() => navigate(usuario ? rutaInicio(usuario.rol) : "/registro")}
+          onPlans={() => navigate("/planes")}
+        />
       </main>
       <Footer />
     </div>

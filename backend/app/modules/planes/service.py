@@ -10,8 +10,13 @@ from app.modules.planes.schemas import PlanActualizar, PlanAdminOut, PlanCrear, 
 from app.modules.suscripciones.models import ESTADO_ACTIVA, Suscripcion
 
 
+def precio_anual_mensualizado(plan: Plan) -> Decimal:
+    """Precio por mes pagando el año completo (con el descuento anual aplicado)."""
+    return (plan.precio_mensual * (100 - plan.descuento_anual_pct) / 100).quantize(Decimal("0.01"), ROUND_HALF_UP)
+
+
 def a_schema(plan: Plan) -> PlanOut:
-    anual = (plan.precio_mensual * (100 - plan.descuento_anual_pct) / 100).quantize(Decimal("0.01"), ROUND_HALF_UP)
+    anual = precio_anual_mensualizado(plan)
     return PlanOut(
         **{c: getattr(plan, c) for c in (
             "id_plan", "codigo", "nombre", "descripcion", "precio_mensual", "descuento_anual_pct",
@@ -25,6 +30,14 @@ def a_schema(plan: Plan) -> PlanOut:
 def listar_publicos(db: Session) -> list[PlanOut]:
     planes = db.scalars(select(Plan).where(Plan.activo.is_(True)).order_by(Plan.orden, Plan.precio_mensual))
     return [a_schema(p) for p in planes]
+
+
+def obtener_publico(db: Session, codigo: str) -> PlanOut:
+    """Detalle de un plan del catálogo: lo usa el checkout para no confiar en datos del navegador."""
+    plan = db.scalar(select(Plan).where(Plan.codigo == codigo, Plan.activo.is_(True)))
+    if plan is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Plan no encontrado")
+    return a_schema(plan)
 
 
 def listar_admin(db: Session) -> list[PlanAdminOut]:

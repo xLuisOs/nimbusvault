@@ -23,9 +23,11 @@ export const STORAGE = { used: 62, total: 100 };
 export function useAlmacenamiento() {
   const { usuario } = useAuth();
   const total = usuario?.suscripcion?.almacenamiento_gb ?? 0;
-  const used = +((usuario?.almacenamiento_usado_bytes ?? 0) / 1024 ** 3).toFixed(1);
-  const pct = total ? Math.round((used / total) * 100) : 0;
-  return { used, total, pct };
+  const usadoBytes = usuario?.almacenamiento_usado_bytes ?? 0;
+  const cuotaBytes = total * 1024 ** 3;
+  const used = +(usadoBytes / 1024 ** 3).toFixed(1);
+  const pct = cuotaBytes ? Math.min(100, Math.round((usadoBytes / cuotaBytes) * 100)) : 0;
+  return { used, total, pct, usadoBytes, cuotaBytes, disponibleBytes: Math.max(cuotaBytes - usadoBytes, 0) };
 }
 
 // ── Icon set ──────────────────────────────────────────────────────────────────
