@@ -17,14 +17,14 @@ export const NAV_ITEMS = [
 export type NavId = (typeof NAV_ITEMS)[number]["id"];
 
 // Datos de ejemplo para las pantallas que todavía no están conectadas (Avance 2)
-export const STORAGE = { used: 62, total: 100 };
+export const STORAGE = { used: 0, total: 100 };
 
 /** Espacio real: lo usado sale de usuarios.almacenamiento_usado_bytes y el total del plan activo. */
 export function useAlmacenamiento() {
   const { usuario } = useAuth();
-  const total = usuario?.suscripcion?.almacenamiento_gb ?? 0;
-  const used = +((usuario?.almacenamiento_usado_bytes ?? 0) / 1024 ** 3).toFixed(1);
-  const pct = total ? Math.round((used / total) * 100) : 0;
+  const total = Math.max(0, usuario?.suscripcion?.almacenamiento_gb ?? 0);
+  const used = Number(((usuario?.almacenamiento_usado_bytes ?? 0) / 1024 ** 3).toFixed(1));
+  const pct = total ? Math.min(100, Math.round((used / total) * 100)) : 0;
   return { used, total, pct };
 }
 

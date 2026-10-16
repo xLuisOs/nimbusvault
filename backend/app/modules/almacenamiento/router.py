@@ -21,7 +21,6 @@ def uso(usuario: Usuario = Depends(get_usuario_actual), db: Session = Depends(ge
 
 
 # ── Carpetas ──────────────────────────────────────────────────────────────────
-
 @router.post("/carpetas", response_model=CarpetaOut, status_code=status.HTTP_201_CREATED)
 def crear_carpeta(
     datos: CarpetaCrear, usuario: Usuario = Depends(get_usuario_actual), db: Session = Depends(get_db)

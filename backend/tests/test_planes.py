@@ -53,3 +53,23 @@ def test_no_se_elimina_plan_con_suscripciones(client):
     gratis = next(p for p in planes if p["codigo"] == "gratis")
     assert gratis["suscriptores_activos"] == 1
     assert client.delete(f"/api/admin/planes/{gratis['id_plan']}", headers=auth(token)).status_code == 409
+
+
+def test_cliente_cambia_de_plan_y_actualiza_cuota(client):
+    registrar_y_verificar(client)
+    token = login(client, "ana@test.com", "Segura123")
+
+    planes = client.get("/api/planes").json()
+    personal = next(p for p in planes if p["codigo"] == "personal")
+
+    r = client.post(
+        "/api/suscripciones/cambiar-plan",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"id_plan": personal["id_plan"], "periodicidad": "mensual"},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["suscripcion"]["id_plan"] == personal["id_plan"]
+
+    me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"}).json()
+    assert me["suscripcion"]["plan_codigo"] == "personal"
+    assert me["suscripcion"]["almacenamiento_gb"] == 25

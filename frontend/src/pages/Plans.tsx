@@ -23,7 +23,7 @@ interface PlanVista {
 
 function aVista(p: Plan): PlanVista {
   return {
-    id: p.codigo,
+    id: p.id_plan,
     name: p.nombre,
     storage: formatoGB(p.almacenamiento_gb),
     price: Number(p.precio_mensual),

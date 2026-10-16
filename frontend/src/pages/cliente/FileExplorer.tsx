@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import AppShell, { NavIcon, STORAGE } from "@/components/layout/AppShell";
+import AppShell, { NavIcon, useAlmacenamiento } from "@/components/layout/AppShell";
 
 // ── Types & data ──────────────────────────────────────────────────────────────
 
@@ -535,7 +535,9 @@ function ItemCard({ item, view, onOpen, onContext, selected, onSelect }: ItemCar
 // ── Storage indicator (bottom bar) ────────────────────────────────────────────
 
 function StorageBar() {
-  const pct = Math.round((STORAGE.used / STORAGE.total) * 100);
+  const { used, total, pct } = useAlmacenamiento();
+  const disponible = Math.max(0, total - used);
+
   return (
     <div
       className="fixed bottom-4 right-6 z-20 flex items-center gap-3 px-4 py-2.5 rounded-2xl shadow-lg"
@@ -559,7 +561,7 @@ function StorageBar() {
           <span className="text-[10px] font-bold" style={{ color: "#334155" }}>{pct}%</span>
         </div>
         <p className="text-[10px]" style={{ color: "#94A3B8" }}>
-          <span className="font-semibold" style={{ color: "#0F172A" }}>{STORAGE.total - STORAGE.used} GB</span> disponibles
+          <span className="font-semibold" style={{ color: "#0F172A" }}>{disponible.toFixed(1)} GB</span> disponibles
         </p>
       </div>
     </div>

@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+import { suscripcionesApi } from "@/api/suscripciones";
+import { useAuth } from "@/context/AuthContext";
 import { formatoDolares } from "@/utils/format";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -169,7 +171,6 @@ function Field({ id, label, placeholder, value, error, maxLength, onChange, suff
 // ── Plan summary card ─────────────────────────────────────────────────────────
 
 function PlanSummary({ plan }: { plan: CheckoutPlan }) {
-  // plan.price ya viene con el descuento anual aplicado (lo calcula la API)
   const annualTotal = plan.annual ? formatoDolares(plan.price * 12) : null;
   const displayPrice = formatoDolares(plan.price).slice(1);
 
@@ -264,6 +265,7 @@ function PaymentForm({ plan, onConfirm }: PaymentFormProps) {
   const [name, setName] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const { recargarUsuario } = useAuth();
 
   const brand = cardBrand(cardNumber);
 
@@ -280,13 +282,23 @@ function PaymentForm({ plan, onConfirm }: PaymentFormProps) {
     return e;
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const errs = validate();
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
     setLoading(true);
-    setTimeout(() => { setLoading(false); onConfirm(); }, 1400);
+
+    try {
+      await suscripcionesApi.cambiarPlan(plan.id, plan.annual ? "anual" : "mensual");
+      await recargarUsuario();
+      setLoading(false);
+      onConfirm();
+    } catch (error: unknown) {
+      setLoading(false);
+      const message = error instanceof Error ? error.message : "No se pudo cambiar de plan.";
+      setErrors({ card: message });
+    }
   }
 
   return (
@@ -574,10 +586,7 @@ export default function Checkout({ plan, onBack, onDashboard }: CheckoutProps) {
   const [confirmed, setConfirmed] = useState(false);
 
   return (
-    <div
-      className="min-h-screen"
-      style={{ background: "linear-gradient(160deg, #E0F4FF 0%, #F8FAFC 50%, #f0fafb 100%)" }}
-    >
+    <div className="min-h-screen" style={{ background: "linear-gradient(160deg, #E0F4FF 0%, #F8FAFC 50%, #f0fafb 100%)" }}>
       {/* Decorative blobs */}
       <div
         className="fixed top-0 right-0 w-96 h-96 rounded-full opacity-15 pointer-events-none blur-3xl"

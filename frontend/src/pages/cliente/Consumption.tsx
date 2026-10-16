@@ -4,29 +4,37 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as LineTooltip,
   BarChart, Bar, Legend,
 } from "recharts";
-import AppShell, { NavIcon, STORAGE } from "@/components/layout/AppShell";
+import AppShell, { NavIcon, useAlmacenamiento } from "@/components/layout/AppShell";
 
 // ── Palette & data ────────────────────────────────────────────────────────────
 
 // Categorical palette — fixed order, CVD-safe (validated via OKLab hue separation)
 const CAT = {
-  docs:   { color: "#2E9BFF", label: "Documentos", gb: 24.1 },
-  images: { color: "#00C896", label: "Imágenes",   gb: 18.6 },
-  other:  { color: "#F59E0B", label: "Otros",       gb: 12.3 },
-  zip:    { color: "#A78BFA", label: "Comprimidos", gb: 7.0  },
+  docs:   { color: "#2E9BFF", label: "Documentos" },
+  images: { color: "#00C896", label: "Imágenes" },
+  other:  { color: "#F59E0B", label: "Otros" },
+  zip:    { color: "#A78BFA", label: "Comprimidos" },
 };
 
-const USED_GB   = STORAGE.used;   // 62
-const TOTAL_GB  = STORAGE.total;  // 100
-const FREE_GB   = TOTAL_GB - USED_GB;
-const USED_PCT  = Math.round((USED_GB / TOTAL_GB) * 100);
-const WARN      = USED_PCT >= 90;
+function getStorageMetrics() {
+  const { used, total, pct } = useAlmacenamiento();
+  const free = Math.max(0, total - used);
+  return { used, total, free, pct, warn: pct >= 90 };
+}
 
-// Donut slices: type segments + available
-const DONUT_DATA = [
-  ...Object.values(CAT).map(({ color, label, gb }) => ({ name: label, value: gb, color })),
-  { name: "Disponible", value: FREE_GB, color: "#E2E8F0" },
-];
+function buildCategoryData(usedGb: number) {
+  const categories = [
+    { key: "docs", color: CAT.docs.color, label: CAT.docs.label, gb: Number((usedGb * 0.38).toFixed(1)) },
+    { key: "images", color: CAT.images.color, label: CAT.images.label, gb: Number((usedGb * 0.27).toFixed(1)) },
+    { key: "other", color: CAT.other.color, label: CAT.other.label, gb: Number((usedGb * 0.2).toFixed(1)) },
+    { key: "zip", color: CAT.zip.color, label: CAT.zip.label, gb: Number((usedGb - (usedGb * 0.38 + usedGb * 0.27 + usedGb * 0.2)).toFixed(1)) },
+  ];
+
+  return categories.map((item) => ({
+    ...item,
+    gb: Math.max(0.1, item.gb),
+  }));
+}
 
 // Activity timeline
 const ACTIVITY = [
@@ -52,19 +60,20 @@ const ACTIVITY_TREND = [
   { day: "10 sep",subidas: 8, descargas: 6 },
 ];
 
-// Bar chart: storage growth over 6 months
-const GROWTH_DATA = [
-  { mes: "Abr", gb: 18 },
-  { mes: "May", gb: 27 },
-  { mes: "Jun", gb: 34 },
-  { mes: "Jul", gb: 45 },
-  { mes: "Ago", gb: 55 },
-  { mes: "Sep", gb: USED_GB },
-];
+function getGrowthData(usedGb: number) {
+  return [
+    { mes: "Abr", gb: 18 },
+    { mes: "May", gb: 27 },
+    { mes: "Jun", gb: 34 },
+    { mes: "Jul", gb: 45 },
+    { mes: "Ago", gb: 55 },
+    { mes: "Sep", gb: Math.max(0.1, usedGb) },
+  ];
+}
 
 // ── Warning badge ─────────────────────────────────────────────────────────────
 
-function WarnBadge() {
+function WarnBadge({ usedPct, freeGb }: { usedPct: number; freeGb: number }) {
   return (
     <div
       className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
@@ -74,17 +83,18 @@ function WarnBadge() {
         <path d="M8 1.5L14.5 13H1.5L8 1.5Z" stroke="#FBBF24" strokeWidth="1.5" strokeLinejoin="round" fill="#FFFBEB"/>
         <path d="M8 6v3M8 10.5v.5" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round"/>
       </svg>
-      Cerca del límite — usaste el {USED_PCT}% de tu espacio. Considera ampliar tu plan.
+      Cerca del límite — usaste el {usedPct}% de tu espacio. Considera ampliar tu plan.
+      {freeGb > 0 && <span className="font-medium">({freeGb.toFixed(1)} GB disponibles)</span>}
     </div>
   );
 }
 
 // ── Custom donut tooltip ──────────────────────────────────────────────────────
 
-function DonutTooltip({ active, payload }: { active?: boolean; payload?: { name: string; value: number; payload: { color: string } }[] }) {
+function DonutTooltip({ active, payload, totalGb }: { active?: boolean; payload?: { name: string; value: number; payload: { color: string } }[]; totalGb: number }) {
   if (!active || !payload?.length) return null;
   const p = payload[0];
-  const pct = ((p.value / TOTAL_GB) * 100).toFixed(1);
+  const pct = ((p.value / totalGb) * 100).toFixed(1);
   return (
     <div
       className="px-3.5 py-2.5 rounded-xl text-sm shadow-xl"
@@ -108,6 +118,12 @@ function DonutTooltip({ active, payload }: { active?: boolean; payload?: { name:
 
 function DonutCard() {
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
+  const { used, total, free, pct, warn } = getStorageMetrics();
+  const categories = buildCategoryData(used);
+  const donutData = [
+    ...categories.map(({ color, label, gb }) => ({ name: label, value: gb, color })),
+    { name: "Disponible", value: free, color: "#E2E8F0" },
+  ];
 
   return (
     <div
@@ -123,19 +139,18 @@ function DonutCard() {
             className="text-base font-extrabold"
             style={{ color: "#0F172A", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
           >
-            {USED_GB} GB usados de {TOTAL_GB} GB
+            {used.toFixed(1)} GB usados de {total} GB
           </h2>
         </div>
         <span
           className="text-xs font-bold px-2.5 py-1 rounded-full"
-          style={{ background: WARN ? "#FFFBEB" : "#E0F4FF", color: WARN ? "#B45309" : "#2E9BFF" }}
+          style={{ background: warn ? "#FFFBEB" : "#E0F4FF", color: warn ? "#B45309" : "#2E9BFF" }}
         >
-          {USED_PCT}% usado
+          {pct}% usado
         </span>
       </div>
 
       <div className="flex flex-col sm:flex-row items-center gap-6">
-        {/* Donut */}
         <div className="relative flex-shrink-0" style={{ width: 200, height: 200 }}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
@@ -146,7 +161,7 @@ function DonutCard() {
                 </linearGradient>
               </defs>
               <Pie
-                data={DONUT_DATA}
+                data={donutData}
                 cx="50%"
                 cy="50%"
                 innerRadius={62}
@@ -159,7 +174,7 @@ function DonutCard() {
                 onMouseLeave={() => setActiveIdx(null)}
                 strokeWidth={0}
               >
-                {DONUT_DATA.map((entry, idx) => (
+                {donutData.map((entry, idx) => (
                   <Cell
                     key={entry.name}
                     fill={entry.color}
@@ -169,25 +184,23 @@ function DonutCard() {
                   />
                 ))}
               </Pie>
-              <ReTooltip content={<DonutTooltip />} />
+              <ReTooltip content={<DonutTooltip totalGb={total} />} />
             </PieChart>
           </ResponsiveContainer>
-          {/* Center label */}
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
             <p
               className="text-2xl font-extrabold leading-none"
               style={{ color: "#0F172A", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
             >
-              {USED_PCT}%
+              {pct}%
             </p>
             <p className="text-[10px] font-semibold mt-0.5" style={{ color: "#94A3B8" }}>utilizado</p>
           </div>
         </div>
 
-        {/* Legend */}
         <div className="flex flex-col gap-3 flex-1 w-full">
-          {Object.values(CAT).map(({ color, label, gb }, idx) => {
-            const pct = ((gb / TOTAL_GB) * 100).toFixed(1);
+          {categories.map(({ color, label, gb }, idx) => {
+            const pctByType = total ? ((gb / total) * 100).toFixed(1) : "0.0";
             const isActive = activeIdx === null || activeIdx === idx;
             return (
               <div
@@ -201,24 +214,23 @@ function DonutCard() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-xs font-medium" style={{ color: "#334155" }}>{label}</span>
-                    <span className="text-xs font-bold" style={{ color: "#0F172A" }}>{gb} GB</span>
+                    <span className="text-xs font-bold" style={{ color: "#0F172A" }}>{gb.toFixed(1)} GB</span>
                   </div>
                   <div className="h-1.5 rounded-full" style={{ background: "#F1F5F9" }}>
                     <div
                       className="h-1.5 rounded-full transition-all duration-300"
-                      style={{ width: `${pct}%`, background: color }}
+                      style={{ width: `${pctByType}%`, background: color }}
                     />
                   </div>
                 </div>
-                <span className="text-[10px] font-semibold w-10 text-right" style={{ color: "#94A3B8" }}>{pct}%</span>
+                <span className="text-[10px] font-semibold w-10 text-right" style={{ color: "#94A3B8" }}>{pctByType}%</span>
               </div>
             );
           })}
-          {/* Available row */}
           <div className="flex items-center gap-3 pt-1.5" style={{ borderTop: "1px solid #F1F5F9" }}>
             <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: "#E2E8F0" }} />
             <span className="text-xs flex-1" style={{ color: "#94A3B8" }}>Disponible</span>
-            <span className="text-xs font-bold" style={{ color: "#94A3B8" }}>{FREE_GB} GB</span>
+            <span className="text-xs font-bold" style={{ color: "#94A3B8" }}>{free.toFixed(1)} GB</span>
           </div>
         </div>
       </div>
@@ -307,6 +319,9 @@ function ActivityTrendCard() {
 // ── Storage growth card ───────────────────────────────────────────────────────
 
 function GrowthCard() {
+  const { used } = getStorageMetrics();
+  const growthData = getGrowthData(used);
+
   return (
     <div
       className="rounded-2xl p-6"
@@ -324,7 +339,7 @@ function GrowthCard() {
         </h2>
       </div>
       <ResponsiveContainer width="100%" height={180}>
-        <BarChart data={GROWTH_DATA} margin={{ top: 4, right: 8, left: -20, bottom: 0 }} barSize={28}>
+        <BarChart data={growthData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }} barSize={28}>
           <defs>
             <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%"   stopColor="#2E9BFF" stopOpacity={1} />
@@ -397,7 +412,6 @@ function TimelineCard() {
       <div className="px-6 py-4 flex flex-col gap-0">
         {visible.map((item, idx) => (
           <div key={item.id} className="flex gap-4 relative">
-            {/* Vertical connector */}
             {idx < visible.length - 1 && (
               <div
                 className="absolute left-[17px] top-8 w-px"
@@ -405,7 +419,6 @@ function TimelineCard() {
               />
             )}
 
-            {/* Icon bubble */}
             <div
               className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 z-10 mt-0.5"
               style={{
@@ -417,7 +430,6 @@ function TimelineCard() {
               <NavIcon id={item.icon} size={15} />
             </div>
 
-            {/* Content */}
             <div className="pb-4 flex-1 min-w-0">
               <div className="flex items-start justify-between gap-2">
                 <p className="text-sm leading-snug" style={{ color: "#334155" }}>
@@ -463,11 +475,12 @@ function TimelineCard() {
 // ── Stat row ──────────────────────────────────────────────────────────────────
 
 function StatRow() {
+  const { used, total, free } = getStorageMetrics();
   const stats = [
     { label: "Subidas este mes",    value: "32",        sub: "↑ 8 vs mes anterior",   color: "#2E9BFF",  bg: "#E0F4FF" },
     { label: "Descargas este mes",  value: "24",        sub: "↓ 3 vs mes anterior",   color: "#00C896",  bg: "#F0FDF9" },
     { label: "Archivos compartidos",value: "9",         sub: "con 4 colaboradores",    color: "#A78BFA",  bg: "#F5F3FF" },
-    { label: "Espacio recuperado",  value: "5.2 GB",    sub: "archivos eliminados",    color: "#F59E0B",  bg: "#FFFBEB" },
+    { label: "Espacio recuperado",  value: `${Math.max(0.1, free).toFixed(1)} GB`, sub: "disponible actual", color: "#F59E0B", bg: "#FFFBEB" },
   ];
 
   return (
@@ -508,6 +521,8 @@ interface ConsumptionProps {
 }
 
 export default function Consumption({ onLogout, onDashboard, onPlans, onFiles, onPayments }: ConsumptionProps) {
+  const { used, total, free, pct, warn } = getStorageMetrics();
+
   function handleNav(id: string) {
     if (id === "dashboard") onDashboard();
     else if (id === "plans")   onPlans();
@@ -525,32 +540,26 @@ export default function Consumption({ onLogout, onDashboard, onPlans, onFiles, o
     >
       <main className="flex-1 overflow-y-auto p-6">
         <div className="max-w-6xl mx-auto flex flex-col gap-5">
+          {warn && <WarnBadge usedPct={pct} freeGb={free} />}
 
-          {/* Warning badge — only when ≥ 90% */}
-          {WARN && <WarnBadge />}
-
-          {/* Demo: always show badge for design review (remove in production) */}
-          {!WARN && (
+          {!warn && (
             <div
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium"
               style={{ background: "#F0FDF9", border: "1px solid #A7F3D0", color: "#065F46" }}
             >
               <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: "#00C896" }} />
-              Almacenamiento en buen estado — {FREE_GB} GB disponibles.
+              Almacenamiento en buen estado — {free.toFixed(1)} GB disponibles.
               El badge de advertencia <strong>"Cerca del límite"</strong> aparece automáticamente cuando el uso supera el 90%.
             </div>
           )}
 
-          {/* Stat row */}
           <StatRow />
 
-          {/* Donut + timeline */}
           <div className="grid lg:grid-cols-2 gap-5">
             <DonutCard />
             <TimelineCard />
           </div>
 
-          {/* Charts row */}
           <div className="grid lg:grid-cols-2 gap-5">
             <ActivityTrendCard />
             <GrowthCard />

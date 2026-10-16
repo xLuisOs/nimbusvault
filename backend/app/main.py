@@ -6,6 +6,7 @@ from app.modules.almacenamiento.router import router as almacenamiento_router
 from app.modules.auth.router import router as auth_router
 from app.modules.planes.router import admin_router as admin_planes_router
 from app.modules.planes.router import router as planes_router
+from app.modules.suscripciones.router import router as suscripciones_router
 
 app = FastAPI(
     title=settings.app_name,
@@ -37,5 +38,6 @@ api.include_router(auth_router)
 api.include_router(planes_router)
 api.include_router(admin_planes_router)
 api.include_router(almacenamiento_router)
+api.include_router(suscripciones_router)
 
 app.include_router(api)
