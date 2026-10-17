@@ -39,6 +39,17 @@ class Settings(BaseSettings):
     # Cookie del refresh token
     cookie_secure: bool = False
 
+    # S3 / MinIO / Supabase Storage
+    s3_endpoint_url: str = ""
+    s3_access_key: str = ""
+    s3_secret_key: str = ""
+    s3_bucket: str = "nimbusvault"
+    s3_region: str = "us-east-1"
+    s3_use_ssl: bool = True
+    s3_path_style: bool = True
+
+    # Límites y cuotas
+    archivo_max_mb: int = 50
     # Admin inicial que crea el seed
     admin_correo: str = "admin@nimbusvault.local"
     admin_password: str = "Admin12345!"
