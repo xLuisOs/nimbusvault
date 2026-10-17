@@ -1,11 +1,18 @@
-"""Las pruebas corren con SQLite en un archivo temporal: no necesitan Postgres ni Docker."""
+"""Por defecto las pruebas corren con SQLite en un archivo temporal: no necesitan Postgres ni Docker.
+
+Con TEST_DATABASE_URL corren contra un Postgres real (así lo hace el CI), para probar también
+las restricciones que SQLite no revisa igual. ¡Esa base se borra en cada prueba!
+"""
 
 import os
 import re
 import tempfile
 
-_db = os.path.join(tempfile.mkdtemp(), "pruebas.db")
-os.environ["DATABASE_URL"] = f"sqlite:///{_db}"
+if os.environ.get("TEST_DATABASE_URL"):
+    os.environ["DATABASE_URL"] = os.environ["TEST_DATABASE_URL"]
+else:
+    _db = os.path.join(tempfile.mkdtemp(), "pruebas.db")
+    os.environ["DATABASE_URL"] = f"sqlite:///{_db}"
 os.environ["ENTORNO"] = "pruebas"
 
 import pytest  # noqa: E402
