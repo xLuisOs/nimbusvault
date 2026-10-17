@@ -1,32 +1,23 @@
 # Infraestructura de NimbusVault en Render (Blueprint).
-# Render lee este archivo y crea la base de datos, la API y el frontend.
+# Render lee este archivo y crea la API y el frontend. La base de datos es PostgreSQL en Supabase.
 # Guía paso a paso: docs/despliegue.md
 #
-#   navegador ──https──> nimbusvault-web (nginx) ──/api──> nimbusvault-api (FastAPI) ──> PostgreSQL
+#   navegador ──https──> nimbusvault-web (nginx) ──/api──> nimbusvault-api (FastAPI) ──> Supabase PostgreSQL
 #                                                                   └──> Supabase Storage (archivos)
 #                                                                   └──> Brevo (correos)
-
-databases:
-  - name: nimbusvault-db
-    plan: free            # 1 GB; vence 30 días después de crearse
-    databaseName: nimbusvault
-    user: nimbus
 
 services:
   - type: web
     name: nimbusvault-api
     runtime: docker
     plan: free
+    region: virginia      # misma zona que Supabase (us-east-1): cada consulta viaja poco
     dockerContext: ./backend
     dockerfilePath: ./backend/Dockerfile
     healthCheckPath: /api/health
     envVars:
       - key: ENTORNO
         value: produccion
-      - key: DATABASE_URL
-        fromDatabase:
-          name: nimbusvault-db
-          property: connectionString
       - key: JWT_SECRET
         generateValue: true
       - key: COOKIE_SECURE
@@ -39,6 +30,9 @@ services:
       - key: EMAIL_BACKEND
         value: brevo
       # Valores secretos: Render los pide al crear el Blueprint (sync: false = no viven en el repo)
+      # DATABASE_URL: "Session pooler" de Supabase (puerto 5432); la conexión directa es solo IPv6
+      - key: DATABASE_URL
+        sync: false
       - key: BREVO_API_KEY
         sync: false
       - key: EMAIL_REMITENTE
@@ -60,6 +54,7 @@ services:
     name: nimbusvault-web
     runtime: docker
     plan: free
+    region: virginia
     dockerContext: ./frontend
     dockerfilePath: ./frontend/Dockerfile
     envVars:
