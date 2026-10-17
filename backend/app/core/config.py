@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -27,8 +28,10 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:5173"
     cors_origins: str = "http://localhost:5173"
 
-    # Correo: "consola" imprime el correo en el log, "smtp" lo envía (Mailpit en local)
+    # Correo: "consola" imprime el correo en el log, "smtp" lo envía (Mailpit en local),
+    # "brevo" lo envía por la API HTTPS de Brevo (en Render el SMTP está bloqueado)
     email_backend: str = "consola"
+    brevo_api_key: str = ""
     smtp_host: str = "localhost"
     smtp_port: int = 1025
     smtp_usuario: str = ""
@@ -53,6 +56,15 @@ class Settings(BaseSettings):
     # Admin inicial que crea el seed
     admin_correo: str = "admin@nimbusvault.local"
     admin_password: str = "Admin12345!"
+
+    @field_validator("database_url")
+    @classmethod
+    def usar_psycopg(cls, v: str) -> str:
+        # Render entrega "postgresql://..." (o "postgres://..."); SQLAlchemy necesita saber que el driver es psycopg 3
+        for prefijo in ("postgres://", "postgresql://"):
+            if v.startswith(prefijo):
+                return "postgresql+psycopg://" + v[len(prefijo):]
+        return v
 
     @property
     def lista_cors(self) -> list[str]:
