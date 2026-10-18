@@ -60,6 +60,9 @@ const SIN_CONEXION = "No hay conexión con el servidor. ¿Está corriendo el bac
 // renovar la sesión no tendría sentido. El resto de /auth (perfil, sesiones…) sí se renueva.
 const SIN_RENOVAR = /^\/auth\/(login|refresh|logout|registro|verificar-correo|reenviar-verificacion|olvide-contrasena|restablecer-contrasena)(\?|$)/;
 
+const ESPERANDO_API = [502, 503, 504];
+const REINTENTOS_API = 15; // 15 × 4 s ≈ 1 minuto
+
 /** Hace la petición y, ante un 401, renueva la sesión y la repite una vez. */
 async function enviar(ruta: string, { method = "GET", body, reintentar = true }: Opciones): Promise<Response> {
   const esFormData = body instanceof FormData;
@@ -78,6 +81,17 @@ async function enviar(ruta: string, { method = "GET", body, reintentar = true }:
     });
   } catch {
     throw new ApiError(0, SIN_CONEXION);
+  }
+
+  // Render (plan gratis) duerme la API tras 15 min sin uso y tarda ~40 s en despertar; mientras tanto
+  // responde 502/503/504. Las lecturas (GET) se reintentan solas en lugar de mostrar un error.
+  for (let intento = 1; ESPERANDO_API.includes(res.status) && method === "GET" && intento <= REINTENTOS_API; intento++) {
+    await new Promise((r) => setTimeout(r, 4000));
+    try {
+      res = await fetch(`${BASE}${ruta}`, { method, headers, credentials: "include" });
+    } catch {
+      throw new ApiError(0, SIN_CONEXION);
+    }
   }
 
   if (res.status === 401 && reintentar && !SIN_RENOVAR.test(ruta)) {
