@@ -1,41 +1,14 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+import { almacenamientoApi, useResumenEspacio } from "@/api/almacenamiento";
+import SubirArchivoModal from "@/components/SubirArchivoModal";
 import AppShell, { NavIcon, useAlmacenamiento } from "@/components/layout/AppShell";
 import { useAuth } from "@/context/AuthContext";
-import { formatoFecha, formatoGB, formatoDolares } from "@/utils/format";
-
-// ── Data ──────────────────────────────────────────────────────────────────────
-
-
-const RECENT_FILES = [
-  { id: 1, name: "Presentación Q3 2026.pptx", type: "ppt", size: "8.4 MB", modified: "Hoy, 10:32 am", shared: true },
-  { id: 2, name: "Base de datos clientes.xlsx", type: "xls", size: "2.1 MB", modified: "Hoy, 9:15 am", shared: false },
-  { id: 3, name: "Contrato proveedor ABC.pdf", type: "pdf", size: "540 KB", modified: "Ayer, 4:47 pm", shared: true },
-  { id: 4, name: "Logo_v3_final.png", type: "img", size: "1.8 MB", modified: "Ayer, 2:20 pm", shared: false },
-  { id: 5, name: "API_docs_v2.md", type: "doc", size: "128 KB", modified: "Mar 9, 11:00 am", shared: false },
-  { id: 6, name: "backup_sept_2026.zip", type: "zip", size: "34.6 MB", modified: "Mar 8, 8:30 am", shared: false },
-];
-
-
-const ACTIVITY = [
-  { id: 1, action: "subiste", file: "Presentación Q3 2026.pptx", time: "hace 1 hora", color: "#2E9BFF" },
-  { id: 2, action: "compartiste", file: "Contrato proveedor ABC.pdf", time: "ayer", color: "#00D1C1" },
-  { id: 3, action: "descargaste", file: "Logo_v3_final.png", time: "ayer", color: "#A78BFA" },
-  { id: 4, action: "subiste", file: "backup_sept_2026.zip", time: "hace 3 días", color: "#2E9BFF" },
-];
-
-
-// ── File type helpers ─────────────────────────────────────────────────────────
-
-const FILE_META: Record<string, { color: string; bg: string; label: string; icon: string }> = {
-  pdf:  { color: "#EF4444", bg: "#FEF2F2", label: "PDF",  icon: "⊞" },
-  xls:  { color: "#22C55E", bg: "#F0FDF4", label: "XLS",  icon: "≡" },
-  ppt:  { color: "#F97316", bg: "#FFF7ED", label: "PPT",  icon: "◈" },
-  img:  { color: "#EC4899", bg: "#FDF2F8", label: "IMG",  icon: "◰" },
-  doc:  { color: "#6366F1", bg: "#EEF2FF", label: "DOC",  icon: "❐" },
-  zip:  { color: "#F59E0B", bg: "#FFFBEB", label: "ZIP",  icon: "◉" },
-};
-
-
+import type { ArchivoReciente, Evento, ResumenEspacio } from "@/types";
+import { EVENTO_META } from "@/utils/actividad";
+import { FILE_META, extension, guardarBlob, tipoDeArchivo } from "@/utils/archivos";
+import { formatoBytes, formatoDolares, formatoFecha, formatoGB, formatoModificado, haceCuanto } from "@/utils/format";
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
 
@@ -60,8 +33,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string; 
 // ── Storage card ──────────────────────────────────────────────────────────────
 
 function StorageCard({ onChangePlan }: { onChangePlan: () => void }) {
-  const { used: USED_GB, total: TOTAL_GB, pct: USED_PCT } = useAlmacenamiento();
-  const pct = USED_PCT;
+  const { total, pct, usadoBytes, disponibleBytes } = useAlmacenamiento();
   const barColor = pct >= 85 ? "#FF6B6B" : pct >= 70 ? "#F59E0B" : undefined;
 
   return (
@@ -77,9 +49,9 @@ function StorageCard({ onChangePlan }: { onChangePlan: () => void }) {
               className="text-3xl font-extrabold"
               style={{ color: "#0F172A", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
             >
-              {USED_GB} GB
+              {formatoBytes(usadoBytes)}
             </span>
-            <span className="text-sm" style={{ color: "#94A3B8" }}>de {TOTAL_GB} GB</span>
+            <span className="text-sm" style={{ color: "#94A3B8" }}>de {formatoGB(total)}</span>
           </div>
         </div>
         <div
@@ -99,7 +71,8 @@ function StorageCard({ onChangePlan }: { onChangePlan: () => void }) {
         <div
           className="h-3 rounded-full relative overflow-hidden transition-all duration-700"
           style={{
-            width: `${pct}%`,
+            // Aunque ocupe menos del 1 %, que se vea que hay algo guardado
+            width: `${Math.max(pct, usadoBytes ? 1 : 0)}%`,
             background: barColor
               ? `linear-gradient(90deg, ${barColor}, #FBBF24)`
               : "linear-gradient(90deg, #2E9BFF, #00D1C1)",
@@ -120,11 +93,11 @@ function StorageCard({ onChangePlan }: { onChangePlan: () => void }) {
         <div className="flex gap-4">
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full" style={{ background: "linear-gradient(90deg,#2E9BFF,#00D1C1)" }} />
-            <span className="text-xs" style={{ color: "#64748B" }}>Utilizado · {USED_GB} GB</span>
+            <span className="text-xs" style={{ color: "#64748B" }}>Utilizado · {formatoBytes(usadoBytes)}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full" style={{ background: "#E2E8F0" }} />
-            <span className="text-xs" style={{ color: "#64748B" }}>Libre · {TOTAL_GB - USED_GB} GB</span>
+            <span className="text-xs" style={{ color: "#64748B" }}>Libre · {formatoBytes(disponibleBytes)}</span>
           </div>
         </div>
         <button
@@ -149,6 +122,8 @@ function PlanCard({ onChangePlan }: { onChangePlan: () => void }) {
   const sus = usuario?.suscripcion;
   const precio = sus ? Number(sus.precio_contratado) : 0;
   const renewalStr = sus ? formatoFecha(sus.fecha_fin) : "—";
+  // En un plan anual el precio contratado es el del año completo
+  const anual = sus ? new Date(sus.fecha_fin).getTime() - new Date(sus.fecha_inicio).getTime() > 40 * 86_400_000 : false;
 
   return (
     <div
@@ -168,7 +143,7 @@ function PlanCard({ onChangePlan }: { onChangePlan: () => void }) {
       <div className="flex items-center gap-3">
         <div
           className="w-10 h-10 rounded-xl flex items-center justify-center"
-          style={{ background: "linear-gradient(135deg, #2E9BFF 0%, #00D1C1 100%)" }}
+          style={{ background: "linear-gradient(135deg, #2E9BFF 0%, #00D1C1 100%)", color: "white" }}
         >
           <NavIcon id="cloud" />
         </div>
@@ -180,7 +155,11 @@ function PlanCard({ onChangePlan }: { onChangePlan: () => void }) {
             {sus ? `Plan ${sus.plan_nombre}` : "Sin plan activo"}
           </p>
           <p className="text-xs" style={{ color: "#94A3B8" }}>
-            {precio === 0 ? "Gratis · se renueva solo" : `${formatoDolares(precio)}/mes · facturación mensual`}
+            {precio === 0
+              ? "Gratis · se renueva solo"
+              : anual
+                ? `${formatoDolares(precio)}/año · facturación anual`
+                : `${formatoDolares(precio)}/mes · facturación mensual`}
           </p>
         </div>
       </div>
@@ -189,7 +168,7 @@ function PlanCard({ onChangePlan }: { onChangePlan: () => void }) {
         {[
           { label: "Almacenamiento", value: sus ? formatoGB(sus.almacenamiento_gb) : "—" },
           { label: "Activo desde", value: sus ? formatoFecha(sus.fecha_inicio) : "—" },
-          { label: "Próxima renovación", value: renewalStr },
+          { label: precio === 0 ? "Se renueva el" : "Vigente hasta", value: renewalStr },
         ].map(({ label, value }) => (
           <div key={label} className="flex items-center justify-between">
             <span className="text-xs" style={{ color: "#94A3B8" }}>{label}</span>
@@ -213,9 +192,35 @@ function PlanCard({ onChangePlan }: { onChangePlan: () => void }) {
 
 // ── Recent files ──────────────────────────────────────────────────────────────
 
-function RecentFiles({ onUpload }: { onUpload: () => void }) {
+function metaArchivo(a: ArchivoReciente) {
+  const tipo = tipoDeArchivo(a.tipo_mime, a.nombre_original);
+  const ext = extension(a.nombre_original);
+  const meta = FILE_META[tipo];
+  return { ...meta, label: tipo === "file" ? (ext ? ext.slice(0, 4).toUpperCase() : meta.label) : meta.label };
+}
+
+interface RecentFilesProps {
+  archivos: ArchivoReciente[] | null; // null = cargando
+  total: number;
+  onUpload: () => void;
+  onFiles: () => void;
+  onAbrirCarpeta: (idCarpeta: string | null) => void;
+  onDescargado: () => void;
+}
+
+function RecentFiles({ archivos, total, onUpload, onFiles, onAbrirCarpeta, onDescargado }: RecentFilesProps) {
   const [view, setView] = useState<"grid" | "list">("list");
-  const [hovered, setHovered] = useState<number | null>(null);
+  const [hovered, setHovered] = useState<string | null>(null);
+  const [aviso, setAviso] = useState("");
+
+  async function descargar(a: ArchivoReciente) {
+    try {
+      guardarBlob(await almacenamientoApi.descargar(a.id_archivo), a.nombre_original);
+      onDescargado(); // la descarga aparece en la actividad
+    } catch (e) {
+      setAviso((e as Error).message);
+    }
+  }
 
   return (
     <div
@@ -228,7 +233,9 @@ function RecentFiles({ onUpload }: { onUpload: () => void }) {
           <h2 className="text-sm font-bold" style={{ color: "#0F172A", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             Archivos recientes
           </h2>
-          <p className="text-xs mt-0.5" style={{ color: "#94A3B8" }}>Tus últimas 6 modificaciones</p>
+          <p className="text-xs mt-0.5" style={{ color: aviso ? "#DC2626" : "#94A3B8" }}>
+            {aviso || "Los últimos que subiste, en cualquier carpeta"}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           {/* View toggle */}
@@ -242,6 +249,7 @@ function RecentFiles({ onUpload }: { onUpload: () => void }) {
                   background: view === v ? "#2E9BFF" : "white",
                   color: view === v ? "white" : "#94A3B8",
                 }}
+                aria-label={v === "list" ? "Ver como lista" : "Ver como cuadrícula"}
               >
                 {v === "list" ? (
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -271,69 +279,91 @@ function RecentFiles({ onUpload }: { onUpload: () => void }) {
       </div>
 
       {/* Content */}
-      {view === "list" ? (
+      {archivos === null ? (
+        <p className="px-6 py-10 text-center text-xs" style={{ color: "#94A3B8" }}>Cargando…</p>
+      ) : archivos.length === 0 ? (
+        <div className="px-6 py-10 flex flex-col items-center gap-3 text-center">
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: "#E0F4FF", color: "#2E9BFF" }}>
+            <NavIcon id="upload" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold" style={{ color: "#334155" }}>Todavía no tienes archivos</p>
+            <p className="text-xs mt-1" style={{ color: "#94A3B8" }}>Sube el primero y aparecerá aquí.</p>
+          </div>
+          <button onClick={onUpload} className="text-xs font-semibold px-4 py-2 rounded-lg text-white" style={{ background: "#2E9BFF" }}>
+            Subir archivo
+          </button>
+        </div>
+      ) : view === "list" ? (
         <div className="divide-y" style={{ borderColor: "#F8FAFC" }}>
           {/* Column headers */}
           <div className="grid grid-cols-[auto_1fr_auto_auto] gap-4 px-6 py-2.5">
-            {["Nombre", "", "Tamaño", "Modificado"].map((h, i) => (
+            {["Nombre", "", "Tamaño", "Subido"].map((h, i) => (
               <span key={i} className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#CBD5E1" }}>{h}</span>
             ))}
           </div>
-          {RECENT_FILES.map((file) => {
-            const meta = FILE_META[file.type];
-            const isHovered = hovered === file.id;
+          {archivos.map((file) => {
+            const meta = metaArchivo(file);
+            const isHovered = hovered === file.id_archivo;
             return (
               <div
-                key={file.id}
+                key={file.id_archivo}
                 className="grid grid-cols-[auto_1fr_auto_auto] gap-4 items-center px-6 py-3.5 transition-colors duration-100 cursor-pointer"
                 style={{ background: isHovered ? "#F8FAFC" : "transparent" }}
-                onMouseEnter={() => setHovered(file.id)}
+                onMouseEnter={() => setHovered(file.id_archivo)}
                 onMouseLeave={() => setHovered(null)}
+                onDoubleClick={() => onAbrirCarpeta(file.id_carpeta)}
               >
                 {/* Type icon */}
                 <div
                   className="w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0"
                   style={{ background: meta.bg, color: meta.color }}
                 >
-                  {meta.icon}
+                  {meta.emoji}
                 </div>
-                {/* Name */}
+                {/* Name + folder */}
                 <div className="min-w-0">
-                  <p className="text-sm font-medium truncate" style={{ color: "#0F172A" }}>{file.name}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
+                  <p className="text-sm font-medium truncate" style={{ color: "#0F172A" }} title={file.nombre_original}>
+                    {file.nombre_original}
+                  </p>
+                  <div className="flex items-center gap-2 mt-0.5 min-w-0">
                     <span
-                      className="text-[10px] font-bold px-1.5 py-0.5 rounded"
+                      className="text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0"
                       style={{ background: meta.bg, color: meta.color }}
                     >
                       {meta.label}
                     </span>
-                    {file.shared && (
-                      <span className="text-[10px]" style={{ color: "#00D1C1" }}>● Compartido</span>
-                    )}
+                    <span className="text-[10px] truncate" style={{ color: "#94A3B8" }}>
+                      en {file.carpeta ?? "Mis archivos"}
+                    </span>
                   </div>
                 </div>
                 {/* Size */}
-                <span className="text-xs text-right" style={{ color: "#94A3B8" }}>{file.size}</span>
-                {/* Modified + actions */}
+                <span className="text-xs text-right" style={{ color: "#94A3B8" }}>{formatoBytes(file.tamano_bytes)}</span>
+                {/* Date + actions */}
                 <div className="flex items-center gap-2">
                   <span className="text-xs whitespace-nowrap hidden sm:block" style={{ color: "#94A3B8" }}>
-                    {file.modified}
+                    {formatoModificado(file.creado_en)}
                   </span>
-                  {isHovered && (
-                    <div className="flex items-center gap-1">
-                      {["download", "share", "more"].map((act) => (
-                        <button
-                          key={act}
-                          className="p-1.5 rounded-lg transition-colors duration-100"
-                          style={{ color: "#94A3B8" }}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = "#F1F5F9"; e.currentTarget.style.color = "#334155"; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#94A3B8"; }}
-                        >
-                          <NavIcon id={act} />
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                  <div className="flex items-center gap-1" style={{ visibility: isHovered ? "visible" : "hidden" }}>
+                    {[
+                      { id: "download", titulo: "Descargar", accion: () => descargar(file) },
+                      { id: "folder", titulo: "Abrir su carpeta", accion: () => onAbrirCarpeta(file.id_carpeta) },
+                    ].map(({ id, titulo, accion }) => (
+                      <button
+                        key={id}
+                        onClick={(e) => { e.stopPropagation(); accion(); }}
+                        title={titulo}
+                        aria-label={titulo}
+                        className="p-1.5 rounded-lg transition-colors duration-100"
+                        style={{ color: "#94A3B8" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "#F1F5F9"; e.currentTarget.style.color = "#334155"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#94A3B8"; }}
+                      >
+                        <NavIcon id={id} size={16} />
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             );
@@ -341,13 +371,15 @@ function RecentFiles({ onUpload }: { onUpload: () => void }) {
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-6">
-          {RECENT_FILES.map((file) => {
-            const meta = FILE_META[file.type];
+          {archivos.map((file) => {
+            const meta = metaArchivo(file);
             return (
               <div
-                key={file.id}
+                key={file.id_archivo}
                 className="rounded-xl p-4 flex flex-col gap-2 cursor-pointer transition-all duration-150 group"
                 style={{ border: "1px solid #E2E8F0", background: "#FAFBFC" }}
+                onClick={() => descargar(file)}
+                title={`Descargar ${file.nombre_original}`}
                 onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "#2E9BFF"; (e.currentTarget as HTMLDivElement).style.background = "white"; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "#E2E8F0"; (e.currentTarget as HTMLDivElement).style.background = "#FAFBFC"; }}
               >
@@ -355,11 +387,11 @@ function RecentFiles({ onUpload }: { onUpload: () => void }) {
                   className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
                   style={{ background: meta.bg, color: meta.color }}
                 >
-                  {meta.icon}
+                  {meta.emoji}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold truncate" style={{ color: "#0F172A" }}>{file.name}</p>
-                  <p className="text-[10px] mt-0.5" style={{ color: "#94A3B8" }}>{file.size}</p>
+                  <p className="text-xs font-semibold truncate" style={{ color: "#0F172A" }}>{file.nombre_original}</p>
+                  <p className="text-[10px] mt-0.5" style={{ color: "#94A3B8" }}>{formatoBytes(file.tamano_bytes)}</p>
                 </div>
               </div>
             );
@@ -369,8 +401,9 @@ function RecentFiles({ onUpload }: { onUpload: () => void }) {
 
       {/* Footer */}
       <div className="px-6 py-3.5 flex items-center justify-between" style={{ borderTop: "1px solid #F1F5F9" }}>
-        <p className="text-xs" style={{ color: "#94A3B8" }}>{RECENT_FILES.length} archivos</p>
+        <p className="text-xs" style={{ color: "#94A3B8" }}>{total} archivo{total !== 1 ? "s" : ""} en total</p>
         <button
+          onClick={onFiles}
           className="text-xs font-semibold transition-colors duration-150 flex items-center gap-1"
           style={{ color: "#2E9BFF" }}
           onMouseEnter={(e) => (e.currentTarget.style.color = "#1E6BD6")}
@@ -388,7 +421,8 @@ function RecentFiles({ onUpload }: { onUpload: () => void }) {
 
 // ── Activity feed ─────────────────────────────────────────────────────────────
 
-function ActivityFeed() {
+function ActivityFeed({ eventos, onRefresh }: { eventos: Evento[] | null; onRefresh: () => void }) {
+  const visibles = (eventos ?? []).slice(0, 6);
   return (
     <div
       className="rounded-2xl p-6 flex flex-col gap-4"
@@ -399,6 +433,9 @@ function ActivityFeed() {
           Actividad reciente
         </h2>
         <button
+          onClick={onRefresh}
+          title="Actualizar"
+          aria-label="Actualizar actividad"
           className="text-xs font-semibold flex items-center gap-1 transition-colors"
           style={{ color: "#2E9BFF" }}
           onMouseEnter={(e) => (e.currentTarget.style.color = "#1E6BD6")}
@@ -407,169 +444,42 @@ function ActivityFeed() {
           <NavIcon id="refresh" />
         </button>
       </div>
+      {eventos !== null && visibles.length === 0 && (
+        <p className="text-xs py-6 text-center" style={{ color: "#94A3B8" }}>
+          Aquí verás lo que subes, descargas y eliminas.
+        </p>
+      )}
       <div className="flex flex-col gap-0">
-        {ACTIVITY.map((item, i) => (
-          <div key={item.id} className="flex gap-3 relative">
-            {/* Timeline line */}
-            {i < ACTIVITY.length - 1 && (
-              <div
-                className="absolute left-3.5 top-7 w-px"
-                style={{ height: "calc(100% - 4px)", background: "#F1F5F9" }}
-              />
-            )}
-            <div
-              className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 z-10"
-              style={{ background: item.color + "18", border: `1.5px solid ${item.color}30` }}
-            >
-              <div className="w-2 h-2 rounded-full" style={{ background: item.color }} />
-            </div>
-            <div className="pb-4 min-w-0">
-              <p className="text-xs leading-relaxed" style={{ color: "#334155" }}>
-                <span className="font-semibold" style={{ color: "#0F172A" }}>Tú</span>{" "}
-                {item.action}{" "}
-                <span className="font-medium">{item.file}</span>
-              </p>
-              <p className="text-[10px] mt-0.5" style={{ color: "#94A3B8" }}>{item.time}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ── Upload modal ──────────────────────────────────────────────────────────────
-
-function UploadModal({ onClose }: { onClose: () => void }) {
-  const { used: USED_GB, total: TOTAL_GB, pct: USED_PCT } = useAlmacenamiento();
-  const [dragging, setDragging] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [done, setDone] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  function simulateUpload() {
-    setUploading(true);
-    let p = 0;
-    const iv = setInterval(() => {
-      p += Math.random() * 18 + 5;
-      if (p >= 100) {
-        p = 100;
-        clearInterval(iv);
-        setProgress(100);
-        setTimeout(() => setDone(true), 300);
-      } else {
-        setProgress(Math.round(p));
-      }
-    }, 180);
-  }
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(15,23,42,0.45)", backdropFilter: "blur(4px)" }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div
-        className="w-full max-w-md rounded-2xl overflow-hidden"
-        style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", boxShadow: "0 24px 64px rgba(14,30,60,0.18)" }}
-      >
-        {/* Modal header */}
-        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid #E2E8F0", background: "white" }}>
-          <h2 className="text-sm font-bold" style={{ color: "#0F172A", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Subir archivo
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg transition-colors"
-            style={{ color: "#94A3B8" }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "#F1F5F9"; e.currentTarget.style.color = "#334155"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#94A3B8"; }}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
-            </svg>
-          </button>
-        </div>
-
-        <div className="p-6">
-          {done ? (
-            <div className="flex flex-col items-center gap-4 py-4 text-center">
-              <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: "linear-gradient(135deg,#00C896,#00D1C1)" }}>
-                <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-                  <path d="M6 14l5 5 11-10" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
-              <div>
-                <p className="text-base font-bold" style={{ color: "#0F172A" }}>¡Archivo subido!</p>
-                <p className="text-sm mt-1" style={{ color: "#64748B" }}>Tu archivo está disponible en Mis archivos.</p>
-              </div>
-              <button
-                onClick={onClose}
-                className="px-6 py-2.5 rounded-xl text-sm font-bold text-white"
-                style={{ background: "#2E9BFF" }}
-              >
-                Entendido
-              </button>
-            </div>
-          ) : uploading ? (
-            <div className="flex flex-col gap-4 py-2">
-              <p className="text-sm font-semibold text-center" style={{ color: "#334155" }}>
-                Subiendo archivo…
-              </p>
-              <div className="h-2.5 rounded-full" style={{ background: "#E2E8F0" }}>
+        {visibles.map((item, i) => {
+          const meta = EVENTO_META[item.tipo];
+          return (
+            <div key={`${item.creado_en}-${i}`} className="flex gap-3 relative">
+              {/* Timeline line */}
+              {i < visibles.length - 1 && (
                 <div
-                  className="h-2.5 rounded-full transition-all duration-200"
-                  style={{ width: `${progress}%`, background: "linear-gradient(90deg,#2E9BFF,#00D1C1)" }}
+                  className="absolute left-3.5 top-7 w-px"
+                  style={{ height: "calc(100% - 4px)", background: "#F1F5F9" }}
                 />
-              </div>
-              <p className="text-xs text-center font-semibold" style={{ color: "#2E9BFF" }}>{progress}%</p>
-            </div>
-          ) : (
-            <>
-              {/* Drop zone */}
+              )}
               <div
-                className="rounded-xl flex flex-col items-center justify-center gap-3 py-10 px-6 text-center cursor-pointer transition-all duration-150"
-                style={{
-                  border: `2px dashed ${dragging ? "#2E9BFF" : "#CBD5E1"}`,
-                  background: dragging ? "#E0F4FF" : "white",
-                }}
-                onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-                onDragLeave={() => setDragging(false)}
-                onDrop={(e) => { e.preventDefault(); setDragging(false); simulateUpload(); }}
-                onClick={() => fileRef.current?.click()}
+                className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 z-10"
+                style={{ background: meta.color + "18", border: `1.5px solid ${meta.color}30` }}
               >
-                <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: "#E0F4FF", color: "#2E9BFF" }}>
-                  <NavIcon id="upload" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold" style={{ color: "#334155" }}>
-                    Arrastra aquí o{" "}
-                    <span style={{ color: "#2E9BFF" }}>selecciona un archivo</span>
-                  </p>
-                  <p className="text-xs mt-1" style={{ color: "#94A3B8" }}>PDF, DOC, XLS, PNG, ZIP — máx. 500 MB</p>
-                </div>
-                <input ref={fileRef} type="file" className="sr-only" onChange={() => simulateUpload()} />
+                <div className="w-2 h-2 rounded-full" style={{ background: meta.color }} />
               </div>
-
-              {/* Space remaining */}
-              <div className="mt-4 rounded-xl p-3 flex items-center gap-3" style={{ background: "#F1F5F9" }}>
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "#E0F4FF", color: "#2E9BFF" }}>
-                  <NavIcon id="cloud" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium" style={{ color: "#334155" }}>Espacio disponible</span>
-                    <span className="text-xs font-bold" style={{ color: "#2E9BFF" }}>{TOTAL_GB - USED_GB} GB libres</span>
-                  </div>
-                  <div className="h-1.5 rounded-full" style={{ background: "#E2E8F0" }}>
-                    <div className="h-1.5 rounded-full" style={{ width: `${USED_PCT}%`, background: "linear-gradient(90deg,#2E9BFF,#00D1C1)" }} />
-                  </div>
-                </div>
+              <div className="pb-4 min-w-0">
+                <p className="text-xs leading-relaxed break-words" style={{ color: "#334155" }}>
+                  <span className="font-semibold" style={{ color: "#0F172A" }}>Tú</span>{" "}
+                  {meta.verbo}{" "}
+                  <span className="font-medium">{item.descripcion}</span>
+                </p>
+                <p className="text-[10px] mt-0.5" style={{ color: "#94A3B8" }}>
+                  {haceCuanto(item.creado_en)}{item.tamano_bytes ? ` · ${formatoBytes(item.tamano_bytes)}` : ""}
+                </p>
               </div>
-            </>
-          )}
-        </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -585,14 +495,34 @@ interface DashboardProps {
   onConsumption?: () => void;
 }
 
+function estadisticas(r: ResumenEspacio | null, pct: number, usado: number, total: number) {
+  const m = r?.este_mes;
+  return [
+    {
+      label: "ARCHIVOS TOTALES", value: r ? String(r.archivos) : "—",
+      sub: m ? `${m.subidas} subido${m.subidas !== 1 ? "s" : ""} este mes` : "", color: "#0F172A",
+    },
+    { label: "CARPETAS", value: r ? String(r.carpetas) : "—", sub: "para organizar tus archivos", color: "#2E9BFF" },
+    { label: "DESCARGAS", value: m ? String(m.descargas) : "—", sub: "este mes", color: "#00D1C1" },
+    {
+      label: "ALMACENAMIENTO", value: `${pct}%`, sub: `${formatoBytes(usado)} de ${formatoGB(total)}`,
+      color: pct >= 80 ? "#F59E0B" : "#00C896",
+    },
+  ];
+}
+
 export default function Dashboard({ onLogout, onPlans, onFiles, onPayments, onConsumption }: DashboardProps) {
-  const { used: USED_GB, total: TOTAL_GB, pct: USED_PCT } = useAlmacenamiento();
+  const navigate = useNavigate();
+  const { total, pct, usadoBytes } = useAlmacenamiento();
+  const { resumen, error, recargar } = useResumenEspacio();
   const [activeNav, setActiveNav] = useState("dashboard");
   const [uploadOpen, setUploadOpen] = useState(false);
 
+  const irAArchivos = () => (onFiles ? onFiles() : navigate("/archivos"));
+
   function handleNav(id: string) {
     if (id === "plans") { onPlans(); return; }
-    if (id === "files" && onFiles) { onFiles(); return; }
+    if (id === "files") { irAArchivos(); return; }
     if (id === "payments" && onPayments) { onPayments(); return; }
     if (id === "consumption" && onConsumption) { onConsumption(); return; }
     setActiveNav(id);
@@ -609,24 +539,37 @@ export default function Dashboard({ onLogout, onPlans, onFiles, onPayments, onCo
       >
         <main className="flex-1 overflow-y-auto p-6">
           <div className="max-w-6xl mx-auto flex flex-col gap-6">
+            {error && (
+              <p className="text-xs px-4 py-2.5 rounded-xl" style={{ background: "#FEF2F2", color: "#B91C1C" }}>
+                No se pudo cargar tu resumen: {error}
+              </p>
+            )}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <StatCard label="ARCHIVOS TOTALES" value="143" sub="↑ 12 este mes" color="#0F172A" />
-              <StatCard label="COMPARTIDOS" value="28" sub="con 6 colaboradores" color="#2E9BFF" />
-              <StatCard label="DESCARGADOS" value="64" sub="últimos 30 días" color="#00D1C1" />
-              <StatCard label="ALMACENAMIENTO" value={`${USED_PCT}%`} sub={`${USED_GB} GB de ${TOTAL_GB} GB`} color={USED_PCT >= 80 ? "#F59E0B" : "#00C896"} />
+              {estadisticas(resumen, pct, usadoBytes, total).map((e) => <StatCard key={e.label} {...e} />)}
             </div>
             <div className="grid lg:grid-cols-3 gap-4">
               <div className="lg:col-span-2"><StorageCard onChangePlan={onPlans} /></div>
               <PlanCard onChangePlan={onPlans} />
             </div>
             <div className="grid lg:grid-cols-3 gap-4">
-              <div className="lg:col-span-2"><RecentFiles onUpload={() => setUploadOpen(true)} /></div>
-              <ActivityFeed />
+              <div className="lg:col-span-2">
+                <RecentFiles
+                  archivos={resumen?.recientes ?? (error ? [] : null)}
+                  total={resumen?.archivos ?? 0}
+                  onUpload={() => setUploadOpen(true)}
+                  onFiles={irAArchivos}
+                  onAbrirCarpeta={(id) => navigate(id ? `/archivos?carpeta=${id}` : "/archivos")}
+                  onDescargado={recargar}
+                />
+              </div>
+              <ActivityFeed eventos={resumen?.actividad ?? (error ? [] : null)} onRefresh={recargar} />
             </div>
           </div>
         </main>
       </AppShell>
-      {uploadOpen && <UploadModal onClose={() => setUploadOpen(false)} />}
+      {uploadOpen && (
+        <SubirArchivoModal onClose={() => setUploadOpen(false)} onSubido={recargar} onVerArchivos={irAArchivos} />
+      )}
     </>
   );
 }

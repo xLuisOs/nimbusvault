@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { useAuth } from "@/context/AuthContext";
-import { iniciales } from "@/utils/format";
+import { formatoBytes, formatoGB, iniciales } from "@/utils/format";
 
 // ── Nav data ──────────────────────────────────────────────────────────────────
 
@@ -15,9 +15,6 @@ export const NAV_ITEMS = [
 ] as const;
 
 export type NavId = (typeof NAV_ITEMS)[number]["id"];
-
-// Datos de ejemplo para las pantallas que todavía no están conectadas (Avance 2)
-export const STORAGE = { used: 62, total: 100 };
 
 /** Espacio real: lo usado sale de usuarios.almacenamiento_usado_bytes y el total del plan activo. */
 export function useAlmacenamiento() {
@@ -150,7 +147,7 @@ export function Sidebar({ active, onNav, onLogout, collapsed }: SidebarProps) {
             />
           </div>
           <p className="text-[10px] mt-1.5" style={{ color: "#64748B" }}>
-            {STORAGE.used} GB de {STORAGE.total} GB
+            {formatoBytes(STORAGE.usadoBytes)} de {formatoGB(STORAGE.total)}
           </p>
         </div>
       )}
@@ -234,17 +231,6 @@ export function TopHeader({ title, onToggleSidebar, onUpload, actions }: TopHead
         >
           <NavIcon id="upload" />
           <span className="hidden sm:inline">Subir archivo</span>
-        </button>
-        <button
-          className="relative p-2 rounded-xl transition-colors duration-150"
-          style={{ color: "#64748B" }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "#F1F5F9"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-        >
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <path d="M10 2a6 6 0 0 1 6 6v3l1.5 2.5H2.5L4 11V8a6 6 0 0 1 6-6ZM8.5 16.5a1.5 1.5 0 0 0 3 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" fill="none"/>
-          </svg>
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ background: "#2E9BFF" }} />
         </button>
         <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white cursor-pointer"
           style={{ background: "linear-gradient(135deg, #2E9BFF 0%, #00D1C1 100%)" }}>

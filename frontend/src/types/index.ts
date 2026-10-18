@@ -122,3 +122,104 @@ export interface TarjetaSimulada {
   vencimiento: string; // MM/AA
   cvv: string;
 }
+
+// ── Resumen del cliente (dashboard y consumo) ────────────────────────────────
+
+export type TipoEvento = "subida" | "descarga" | "eliminacion" | "carpeta" | "pago";
+
+export interface Evento {
+  tipo: TipoEvento;
+  descripcion: string;
+  tamano_bytes: number;
+  creado_en: string;
+}
+
+export interface ArchivoReciente extends Archivo {
+  carpeta: string | null;
+}
+
+export interface ResumenEspacio {
+  archivos: number;
+  carpetas: number;
+  usado_bytes: number;
+  cuota_bytes: number;
+  por_categoria: { categoria: string; etiqueta: string; bytes: number; archivos: number }[];
+  recientes: ArchivoReciente[];
+  actividad: Evento[];
+  este_mes: {
+    subidas: number;
+    descargas: number;
+    subidas_mes_anterior: number;
+    descargas_mes_anterior: number;
+    bytes_eliminados: number;
+  };
+  tendencia: { dia: string; subidas: number; descargas: number }[]; // dia = AAAA-MM-DD
+  crecimiento: { mes: string; bytes: number }[]; // mes = AAAA-MM
+}
+
+// ── Panel administrativo ─────────────────────────────────────────────────────
+
+export interface ResumenAdmin {
+  kpis: {
+    clientes_activos: number;
+    clientes_nuevos_mes: number;
+    clientes_nuevos_mes_anterior: number;
+    almacenamiento_usado_bytes: number;
+    cuota_contratada_bytes: number;
+    ingresos_mes: string;
+    ingresos_mes_anterior: string;
+    suscripciones_pagadas: number;
+    suscripciones_activas: number;
+  };
+  crecimiento: { mes: string; clientes: number }[];
+  distribucion: { plan: string; color: string; suscripciones: number }[];
+  ultimas_suscripciones: {
+    nombre: string;
+    correo: string;
+    plan: string;
+    color: string;
+    periodicidad: "mensual" | "anual";
+    precio_contratado: string;
+    fecha_inicio: string;
+    estado: "activa" | "vencida" | "cancelada";
+    estado_usuario: Usuario["estado"];
+  }[];
+}
+
+export interface UsuarioAdmin {
+  id_usuario: string;
+  nombre: string;
+  correo: string;
+  rol: Rol;
+  estado: Usuario["estado"];
+  plan: string | null;
+  almacenamiento_usado_bytes: number;
+  cuota_bytes: number;
+  creado_en: string;
+  ultimo_acceso: string | null;
+}
+
+export interface InfraAdmin {
+  componentes: {
+    id: string;
+    nombre: string;
+    estado: "operativo" | "advertencia" | "error";
+    metrica: string;
+    metrica_etiqueta: string;
+    detalle: string;
+  }[];
+  alertas: { severidad: "alta" | "media" | "baja"; titulo: string; componente: string }[];
+  historial_almacenamiento: { dia: string; bytes: number }[];
+  cuota_contratada_bytes: number;
+  actividad: {
+    subidas: number;
+    descargas: number;
+    bytes_subidos: number;
+    sesiones_activas: number;
+    usuarios_con_acceso_hoy: number;
+    archivos_almacenados: number;
+  };
+  en_linea_desde: string;
+  entorno: string;
+  version: string;
+}

@@ -47,6 +47,9 @@ def test_resumen_de_la_plataforma(client, admin, ana):
     assert datos["crecimiento"][-1]["clientes"] == 2 and len(datos["crecimiento"]) == 8
     assert {d["plan"]: d["suscripciones"] for d in datos["distribucion"]} == {"Gratis": 1, "Pro": 1}
     assert datos["ultimas_suscripciones"][0]["correo"] == "beto@test.com"
+    # La suscripción Gratis que Ana dejó al pasarse a Pro aparece como cancelada
+    ana = [s for s in datos["ultimas_suscripciones"] if s["correo"] == "ana@test.com"]
+    assert {(s["plan"], s["estado"]) for s in ana} == {("Pro", "activa"), ("Gratis", "cancelada")}
 
 
 # ── Usuarios ─────────────────────────────────────────────────────────────────

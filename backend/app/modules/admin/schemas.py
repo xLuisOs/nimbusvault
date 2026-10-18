@@ -46,6 +46,7 @@ class SuscripcionReciente(BaseModel):
     periodicidad: str
     precio_contratado: Decimal
     fecha_inicio: datetime
+    estado: str  # de la suscripción: activa | vencida | cancelada
     estado_usuario: str
 
 

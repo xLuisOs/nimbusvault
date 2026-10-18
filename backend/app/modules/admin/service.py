@@ -90,7 +90,7 @@ def resumen(db: Session, desfase_min: int = 0) -> dict:
 
     recientes = db.execute(
         select(Usuario.nombre, Usuario.correo, Usuario.estado, Plan.nombre, Plan.color,
-               Suscripcion.periodicidad, Suscripcion.precio_contratado, Suscripcion.fecha_inicio)
+               Suscripcion.periodicidad, Suscripcion.precio_contratado, Suscripcion.fecha_inicio, Suscripcion.estado)
         .join(Usuario, Suscripcion.id_usuario == Usuario.id_usuario)
         .join(Plan, Suscripcion.id_plan == Plan.id_plan)
         .order_by(Suscripcion.fecha_inicio.desc())
@@ -120,8 +120,8 @@ def resumen(db: Session, desfase_min: int = 0) -> dict:
         ],
         "ultimas_suscripciones": [
             {"nombre": n, "correo": c, "estado_usuario": e, "plan": p, "color": col,
-             "periodicidad": per, "precio_contratado": precio, "fecha_inicio": f}
-            for n, c, e, p, col, per, precio, f in recientes
+             "periodicidad": per, "precio_contratado": precio, "fecha_inicio": f, "estado": est}
+            for n, c, e, p, col, per, precio, f, est in recientes
         ],
     }
 
@@ -279,6 +279,7 @@ def infraestructura(db: Session, almacen: AlmacenS3 | None, version: str, desfas
     ) or 0
 
     correo_ok = settings.email_backend != "brevo" or bool(settings.brevo_api_key)
+    proveedor_s3 = "Supabase Storage" if "supabase.co" in settings.s3_endpoint_url else "S3 compatible"
     componentes = [
         {
             "id": "api", "nombre": "API Backend", "estado": "operativo",
@@ -294,7 +295,7 @@ def infraestructura(db: Session, almacen: AlmacenS3 | None, version: str, desfas
             "id": "storage", "nombre": "Almacenamiento de archivos", "estado": _estado_por_latencia(ms_s3, 1500),
             "metrica": f"{ms_s3:.0f} ms" if ms_s3 is not None else "Sin respuesta",
             "metrica_etiqueta": "Latencia del bucket",
-            "detalle": error_s3 or f"Supabase Storage · bucket {settings.s3_bucket}",
+            "detalle": error_s3 or f"{proveedor_s3} · bucket {settings.s3_bucket}",
         },
         {
             "id": "auth", "nombre": "Autenticación y correo", "estado": "operativo" if correo_ok else "advertencia",
