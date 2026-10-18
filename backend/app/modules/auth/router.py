@@ -1,13 +1,17 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.deps import get_usuario_actual
+from app.core.storage import AlmacenS3, get_almacen_opcional
 from app.db.session import get_db
 from app.modules.auth import service
 from app.modules.auth.models import Usuario
 from app.modules.auth.schemas import (
-    CorreoIn, LoginIn, MensajeOut, RegistroIn, RestablecerIn, TokenIn, TokenOut, UsuarioOut,
+    CambiarPasswordIn, ConfirmarPasswordIn, CorreoIn, LoginIn, MensajeOut, PerfilIn, RegistroIn, RestablecerIn,
+    SesionOut, TokenIn, TokenOut, UsuarioOut,
 )
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
@@ -95,3 +99,61 @@ def restablecer_contrasena(datos: RestablecerIn, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UsuarioOut)
 def me(usuario: Usuario = Depends(get_usuario_actual), db: Session = Depends(get_db)):
     return service.usuario_a_schema(db, usuario)
+
+
+# ── Configuración de la cuenta ───────────────────────────────────────────────
+# Viven bajo /auth porque la cookie del refresh token solo viaja a /api/auth: así se sabe
+# cuál es la sesión de este navegador.
+
+@router.patch("/me", response_model=UsuarioOut)
+def actualizar_perfil(datos: PerfilIn, usuario: Usuario = Depends(get_usuario_actual), db: Session = Depends(get_db)):
+    service.actualizar_perfil(db, usuario, datos.nombre)
+    return service.usuario_a_schema(db, usuario)
+
+
+@router.post("/cambiar-contrasena", response_model=MensajeOut)
+def cambiar_contrasena(
+    datos: CambiarPasswordIn, usuario: Usuario = Depends(get_usuario_actual), db: Session = Depends(get_db),
+    nv_refresh: str | None = Cookie(default=None),
+):
+    service.cambiar_password(db, usuario, datos.actual, datos.nueva, nv_refresh)
+    return MensajeOut(mensaje="Contraseña actualizada. Se cerraron tus otras sesiones.")
+
+
+@router.get("/sesiones", response_model=list[SesionOut])
+def sesiones(
+    usuario: Usuario = Depends(get_usuario_actual), db: Session = Depends(get_db),
+    nv_refresh: str | None = Cookie(default=None),
+):
+    return service.sesiones_activas(db, usuario, nv_refresh)
+
+
+@router.post("/sesiones/cerrar-otras", response_model=MensajeOut)
+def cerrar_otras(
+    usuario: Usuario = Depends(get_usuario_actual), db: Session = Depends(get_db),
+    nv_refresh: str | None = Cookie(default=None),
+):
+    n = service.cerrar_otras_sesiones(db, usuario, nv_refresh)
+    return MensajeOut(mensaje=f"Se cerraron {n} sesión(es) en otros dispositivos.")
+
+
+@router.delete("/sesiones/{id_sesion}", response_model=MensajeOut)
+def cerrar_una(
+    id_sesion: UUID, response: Response,
+    usuario: Usuario = Depends(get_usuario_actual), db: Session = Depends(get_db),
+    nv_refresh: str | None = Cookie(default=None),
+):
+    if service.cerrar_sesion_por_id(db, usuario, id_sesion, nv_refresh):
+        response.delete_cookie(COOKIE_REFRESH, path="/api/auth")
+    return MensajeOut(mensaje="Sesión cerrada")
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+def eliminar_mi_cuenta(
+    datos: ConfirmarPasswordIn, response: Response,
+    usuario: Usuario = Depends(get_usuario_actual), db: Session = Depends(get_db),
+    almacen: AlmacenS3 | None = Depends(get_almacen_opcional),
+):
+    """Borra la cuenta, sus archivos (también del almacenamiento), suscripciones y pagos. Pide la contraseña."""
+    service.eliminar_mi_cuenta(db, almacen, usuario, datos.password)
+    response.delete_cookie(COOKIE_REFRESH, path="/api/auth")

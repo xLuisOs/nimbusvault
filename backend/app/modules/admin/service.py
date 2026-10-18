@@ -6,20 +6,20 @@ from decimal import Decimal
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import delete, func, select, text, update
+from sqlalchemy import func, select, text, update
 from sqlalchemy.orm import Session
 
 from app.core import email
 from app.core.config import settings
 from app.core.security import ahora, generar_token, hash_password
-from app.core.storage import AlmacenS3, ErrorAlmacen
+from app.core.storage import AlmacenS3
 from app.modules.actividad.models import TIPO_DESCARGA, TIPO_ELIMINACION, TIPO_SUBIDA, Actividad
 from app.modules.admin.schemas import InvitarIn, UsuarioActualizar
-from app.modules.almacenamiento.models import Archivo, Carpeta
+from app.modules.almacenamiento.models import Archivo
 from app.modules.auth.models import (
-    ESTADO_ACTIVO, ESTADO_PENDIENTE, ESTADO_SUSPENDIDO, ROL_CLIENTE, TOKEN_RECUPERACION, Rol, Sesion, TokenUsuario,
-    Usuario,
+    ESTADO_ACTIVO, ESTADO_PENDIENTE, ESTADO_SUSPENDIDO, ROL_CLIENTE, TOKEN_RECUPERACION, Rol, Sesion, Usuario,
 )
+from app.modules.auth.cuenta import borrar_cuenta
 from app.modules.auth.service import _crear_token, buscar_por_correo
 from app.modules.pagos.models import ESTADO_APROBADO, Pago
 from app.modules.planes.models import Plan
@@ -209,25 +209,7 @@ def actualizar_usuario(db: Session, admin: Usuario, id_usuario: UUID, datos: Usu
 def eliminar_usuario(db: Session, almacen: AlmacenS3 | None, admin: Usuario, id_usuario: UUID) -> None:
     usuario = _usuario_o_404(db, id_usuario)
     _no_a_si_mismo(admin, usuario)
-    if usuario.almacenamiento_usado_bytes and almacen is None:
-        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "El almacenamiento no está disponible para borrar sus archivos")
-
-    claves = list(db.scalars(select(Archivo.clave_objeto).where(Archivo.id_usuario == id_usuario)))
-    suscripciones = select(Suscripcion.id_suscripcion).where(Suscripcion.id_usuario == id_usuario)
-
-    # Borrado explícito en orden (los pagos no tienen ON DELETE CASCADE, y así funciona igual en SQLite)
-    db.execute(delete(Pago).where(Pago.id_suscripcion.in_(suscripciones)))
-    for modelo in (Actividad, Archivo, Suscripcion, Sesion, TokenUsuario):
-        db.execute(delete(modelo).where(modelo.id_usuario == id_usuario))
-    # Carpetas: primero las hijas (la relación padre-hija se apunta a sí misma)
-    db.execute(update(Carpeta).where(Carpeta.id_usuario == id_usuario).values(id_carpeta_padre=None))
-    db.execute(delete(Carpeta).where(Carpeta.id_usuario == id_usuario))
-    db.execute(delete(Usuario).where(Usuario.id_usuario == id_usuario))
-    db.commit()
-
-    # Después de la base, el bucket: si algo falla quedan objetos huérfanos, nunca registros rotos
-    for clave in claves:
-        almacen.borrar(clave)
+    borrar_cuenta(db, almacen, usuario)
 
 
 # ── Infraestructura ──────────────────────────────────────────────────────────

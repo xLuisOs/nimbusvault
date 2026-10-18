@@ -91,3 +91,37 @@ class TokenOut(BaseModel):
     token_type: str = "bearer"
     expira_en_segundos: int
     usuario: UsuarioOut
+
+
+# ── Configuración de la cuenta ───────────────────────────────────────────────
+
+class PerfilIn(BaseModel):
+    nombre: str = Field(min_length=2, max_length=120)
+
+    @field_validator("nombre")
+    @classmethod
+    def limpiar_nombre(cls, v: str) -> str:
+        return " ".join(v.split())
+
+
+class CambiarPasswordIn(BaseModel):
+    actual: str = Field(max_length=72)
+    nueva: str = Field(max_length=72)
+
+    @field_validator("nueva")
+    @classmethod
+    def password_segura(cls, v: str) -> str:
+        return _validar_password(v)
+
+
+class ConfirmarPasswordIn(BaseModel):
+    password: str = Field(max_length=72)
+
+
+class SesionOut(BaseModel):
+    id_sesion: UUID
+    ip: str | None
+    user_agent: str | None
+    creado_en: datetime
+    expira_en: datetime
+    actual: bool  # la sesión de este navegador
