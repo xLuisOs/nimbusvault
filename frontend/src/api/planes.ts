@@ -5,6 +5,7 @@ import type { Plan, PlanAdmin, PlanFormulario } from "@/types";
 
 export const planesApi = {
   listar: () => api<Plan[]>("/planes"),
+  obtener: (codigo: string) => api<Plan>(`/planes/${encodeURIComponent(codigo)}`),
 
   // Solo administrador
   listarAdmin: () => api<PlanAdmin[]>("/admin/planes"),

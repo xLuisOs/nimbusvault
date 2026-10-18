@@ -1,6 +1,9 @@
 import logging
 import smtplib
 from email.message import EmailMessage
+from email.utils import parseaddr
+
+import requests
 
 from app.core.config import settings
 
@@ -19,6 +22,10 @@ def enviar_correo(destino: str, asunto: str, texto: str, html: str | None = None
         log.warning("\n──── CORREO ────\nPara: %s\nAsunto: %s\n\n%s\n────────────────", destino, asunto, texto)
         return
 
+    if settings.email_backend == "brevo":
+        _enviar_brevo(destino, asunto, texto, html)
+        return
+
     msg = EmailMessage()
     msg["From"] = settings.email_remitente
     msg["To"] = destino
@@ -33,6 +40,27 @@ def enviar_correo(destino: str, asunto: str, texto: str, html: str | None = None
         if settings.smtp_usuario:
             smtp.login(settings.smtp_usuario, settings.smtp_password)
         smtp.send_message(msg)
+
+
+def _enviar_brevo(destino: str, asunto: str, texto: str, html: str | None) -> None:
+    # Render bloquea los puertos SMTP en el plan gratis, así que en producción el correo sale por HTTPS.
+    # El remitente tiene que estar verificado en Brevo (Senders & IP).
+    nombre, correo = parseaddr(settings.email_remitente)
+    r = requests.post(
+        "https://api.brevo.com/v3/smtp/email",
+        headers={"api-key": settings.brevo_api_key, "accept": "application/json"},
+        json={
+            "sender": {"name": nombre or "NimbusVault", "email": correo},
+            "to": [{"email": destino}],
+            "subject": asunto,
+            "textContent": texto,
+            "htmlContent": html or f"<pre>{texto}</pre>",
+        },
+        timeout=10,
+    )
+    if r.status_code >= 400:
+        log.error("Brevo rechazó el correo para %s: %s %s", destino, r.status_code, r.text)
+        r.raise_for_status()
 
 
 def _plantilla(titulo: str, parrafo: str, boton: str, enlace: str) -> str:
@@ -68,4 +96,18 @@ def enviar_recuperacion(destino: str, nombre: str, token: str) -> None:
         f"El enlace vence en {settings.recuperacion_minutos} minutos.",
         _plantilla("Restablece tu contraseña", f"Hola {nombre}, recibimos una solicitud para cambiar tu contraseña.",
                    "Crear nueva contraseña", enlace),
+    )
+
+
+def enviar_invitacion(destino: str, nombre: str, token: str) -> None:
+    """Cuando un administrador crea la cuenta: el usuario elige su contraseña con el mismo flujo de recuperación."""
+    enlace = f"{settings.frontend_url}/restablecer-contrasena?token={token}"
+    enviar_correo(
+        destino,
+        "Te invitaron a NimbusVault",
+        f"Hola {nombre},\n\nUn administrador creó tu cuenta en NimbusVault. Elige tu contraseña aquí:\n{enlace}\n\n"
+        f"El enlace vence en {settings.verificacion_horas} horas.",
+        _plantilla("Bienvenido a NimbusVault",
+                   f"Hola {nombre}, un administrador creó tu cuenta. Solo falta que elijas tu contraseña.",
+                   "Elegir contraseña", enlace),
     )

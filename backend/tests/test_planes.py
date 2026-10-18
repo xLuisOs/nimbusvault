@@ -1,13 +1,9 @@
-from tests.conftest import ADMIN, login, registrar_y_verificar
+from tests.conftest import ADMIN, auth, login, registrar_y_verificar
 
 NUEVO = {
     "codigo": "estudiante", "nombre": "Estudiante", "descripcion": "Plan para estudiantes",
     "precio_mensual": "2.50", "almacenamiento_gb": 15, "caracteristicas": ["15 GB", "Soporte por correo"],
 }
-
-
-def auth(token):
-    return {"Authorization": f"Bearer {token}"}
 
 
 def test_catalogo_publico_sin_login(client):
@@ -53,3 +49,21 @@ def test_no_se_elimina_plan_con_suscripciones(client):
     gratis = next(p for p in planes if p["codigo"] == "gratis")
     assert gratis["suscriptores_activos"] == 1
     assert client.delete(f"/api/admin/planes/{gratis['id_plan']}", headers=auth(token)).status_code == 409
+
+
+def test_detalle_de_plan_por_codigo(client):
+    r = client.get("/api/planes/pro")
+    assert r.status_code == 200
+    pro = r.json()
+    assert pro["nombre"] == "Pro"
+    assert pro["precio_anual_mensualizado"] == "7.20"
+    assert pro["caracteristicas"][0] == "100 GB de almacenamiento"
+
+
+def test_detalle_de_plan_inexistente_o_inactivo(client):
+    assert client.get("/api/planes/no-existe").status_code == 404
+
+    token = login(client, **ADMIN)
+    pro = next(p for p in client.get("/api/admin/planes", headers=auth(token)).json() if p["codigo"] == "pro")
+    client.patch(f"/api/admin/planes/{pro['id_plan']}/estado", json={"activo": False}, headers=auth(token))
+    assert client.get("/api/planes/pro").status_code == 404  # desactivado: ya no se puede contratar

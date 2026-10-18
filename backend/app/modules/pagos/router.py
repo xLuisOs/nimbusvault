@@ -1,126 +1,34 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
-from sqlalchemy import select
 
+from app.core.deps import requiere_cliente
 from app.db.session import get_db
-from app.core.deps import get_usuario_actual
 from app.modules.auth.models import Usuario
-from app.modules.pagos.schemas import (
-    ContratarPlanRequest,
-    ContratarPlanResponse,
-    PagoHistorialResponse,
-    RenovarSuscripcionRequest,
-    RenovarSuscripcionResponse,
-)
-from app.modules.pagos.service import (
-    contratar_plan,
-    renovar_suscripcion,
-)
-from app.modules.pagos.models import Pago
+from app.modules.pagos import service
+from app.modules.pagos.schemas import ContratarIn, PagoOut
+
+router = APIRouter(tags=["Pagos"])
 
 
-router = APIRouter(
-    prefix="/suscripciones",
-    tags=["Suscripciones"],
-)
-pagos_router = APIRouter(
-    prefix="/pagos",
-    tags=["Pagos"],
-)
+@router.post("/suscripciones/contratar", response_model=PagoOut, status_code=status.HTTP_201_CREATED)
+def contratar(datos: ContratarIn, usuario: Usuario = Depends(requiere_cliente), db: Session = Depends(get_db)):
+    """Contrata o cambia de plan con un pago simulado. Devuelve el comprobante."""
+    return service.contratar_plan(db, usuario, datos)
 
-@router.post(
-    "/contratar",
-    response_model=ContratarPlanResponse,
-    status_code=status.HTTP_201_CREATED,
-)
-def contratar(
-    datos: ContratarPlanRequest,
-    db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_usuario_actual),
-):
-    try:
-        suscripcion, pago = contratar_plan(db, usuario, datos)
 
-        return ContratarPlanResponse(
-            mensaje="Plan contratado correctamente",
-            id_suscripcion=suscripcion.id_suscripcion,
-            id_pago=pago.id_pago,
-            numero_comprobante=pago.numero_comprobante,
-            plan=suscripcion.plan.nombre,
-            periodicidad=suscripcion.periodicidad,
-            monto=pago.monto,
-            fecha_inicio=suscripcion.fecha_inicio.isoformat(),
-            fecha_fin=suscripcion.fecha_fin.isoformat(),
-            estado_pago=pago.estado,
-        )
+@router.get("/pagos", response_model=list[PagoOut])
+def historial(usuario: Usuario = Depends(requiere_cliente), db: Session = Depends(get_db)):
+    """Historial de pagos del cliente, del más reciente al más antiguo."""
+    return service.listar_pagos(db, usuario)
 
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-    
-@router.post(
-    "/renovar",
-    response_model=RenovarSuscripcionResponse,
-    status_code=status.HTTP_200_OK,
-)
-def renovar(
-    datos: RenovarSuscripcionRequest,
-    db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_usuario_actual),
-):
-    try:
-        suscripcion, pago = renovar_suscripcion(
-            db,
-            usuario,
-            datos,
-        )
 
-        return RenovarSuscripcionResponse(
-            mensaje="Suscripción renovada correctamente",
-            id_suscripcion=suscripcion.id_suscripcion,
-            id_pago=pago.id_pago,
-            numero_comprobante=pago.numero_comprobante,
-            plan=suscripcion.plan.nombre,
-            periodicidad=suscripcion.periodicidad,
-            monto=pago.monto,
-            fecha_inicio=suscripcion.fecha_inicio.isoformat(),
-            fecha_fin=suscripcion.fecha_fin.isoformat(),
-            estado_pago=pago.estado,
-        )
-
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-@pagos_router.get(
-    "",
-    response_model=list[PagoHistorialResponse],
-)
-
-def historial_pagos(
-    db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_usuario_actual),
-):
-    pagos = db.scalars(
-        select(Pago)
-        .where(Pago.id_usuario == usuario.id_usuario)
-        .order_by(Pago.creado_en.desc())
-    ).all()
-
-    return [
-        PagoHistorialResponse(
-            id_pago=pago.id_pago,
-            numero_comprobante=pago.numero_comprobante,
-            plan=pago.plan.nombre,
-            tipo=pago.tipo,
-            estado=pago.estado,
-            monto=pago.monto,
-            marca=pago.metodo_pago.marca,
-            ultimos_4=pago.metodo_pago.ultimos_4,
-            fecha=pago.creado_en.isoformat(),
-        )
-        for pago in pagos
-    ]
+@router.get("/pagos/{id_pago}/comprobante", response_class=Response)
+def comprobante(id_pago: UUID, usuario: Usuario = Depends(requiere_cliente), db: Session = Depends(get_db)):
+    nombre, contenido = service.comprobante_pdf(db, usuario, id_pago)
+    return Response(
+        contenido,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{nombre}"'},
+    )

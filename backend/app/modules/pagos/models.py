@@ -1,91 +1,39 @@
+"""Modelo de pagos (simulados) asociados a una suscripción."""
 import uuid
+from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import CheckConstraint, ForeignKey, Numeric, SmallInteger, String, Uuid
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Numeric, String, Uuid
+from sqlalchemy.orm import Mapped, mapped_column
 
-from app.db.session import Base, ConFechas
-from app.modules.planes.models import Plan
+from app.db.session import Base
 
 TIPO_CONTRATACION = "contratacion"
 TIPO_RENOVACION = "renovacion"
 
+ESTADO_PENDIENTE = "pendiente"
 ESTADO_APROBADO = "aprobado"
 ESTADO_RECHAZADO = "rechazado"
 
 
-class MetodoPago(Base):
-    __tablename__ = "metodos_pago"
-
-    id_metodo_pago: Mapped[uuid.UUID] = mapped_column(
-        Uuid, primary_key=True, default=uuid.uuid4
-    )
-
-    marca: Mapped[str] = mapped_column(String(20))
-    ultimos_4: Mapped[str] = mapped_column(String(4))
-
-    pagos: Mapped[list["Pago"]] = relationship(
-        back_populates="metodo_pago"
-    )
-
-
-class Pago(ConFechas, Base):
+class Pago(Base):
     __tablename__ = "pagos"
     __table_args__ = (
-        CheckConstraint(
-            "tipo IN ('contratacion','renovacion')",
-            name="ck_pagos_tipo",
-        ),
-        CheckConstraint(
-            "estado IN ('aprobado','rechazado')",
-            name="ck_pagos_estado",
-        ),
-        CheckConstraint(
-            "monto >= 0",
-            name="ck_pagos_monto",
-        ),
+        CheckConstraint("monto >= 0", name="ck_pagos_monto"),
+        CheckConstraint("estado IN ('pendiente','aprobado','rechazado')", name="ck_pagos_estado"),
+        CheckConstraint("tipo IN ('contratacion','renovacion')", name="ck_pagos_tipo"),
     )
 
-    id_pago: Mapped[uuid.UUID] = mapped_column(
-        Uuid, primary_key=True, default=uuid.uuid4
-    )
-
-    numero_comprobante: Mapped[str] = mapped_column(
-        String(40), unique=True, index=True
-    )
-
-    id_usuario: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("usuarios.id_usuario", ondelete="CASCADE"),
-        index=True,
-    )
-
+    id_pago: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     id_suscripcion: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("suscripciones.id_suscripcion", ondelete="CASCADE"),
-        index=True,
+        Uuid, ForeignKey("suscripciones.id_suscripcion"), index=True
     )
-
-    id_metodo_pago: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("metodos_pago.id_metodo_pago"),
-        index=True,
-    )
-
+    numero_comprobante: Mapped[str] = mapped_column(String(40), unique=True)
     tipo: Mapped[str] = mapped_column(String(20))
-    estado: Mapped[str] = mapped_column(
-        String(20),
-        default=ESTADO_APROBADO,
-    )
-
-    monto: Mapped[Decimal] = mapped_column(
-        Numeric(10, 2)
-    )
-
-    id_plan: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("planes.id_plan"),
-        index=True,
-    )
-
-    metodo_pago: Mapped[MetodoPago] = relationship(
-        back_populates="pagos"
-    )
-
-    plan: Mapped[Plan] = relationship(lazy="joined")
+    monto: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    metodo_simulado: Mapped[str] = mapped_column(String(30))
+    estado: Mapped[str] = mapped_column(String(20))
+    fecha_pago: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Solo para mostrar el método: nunca se guarda el número completo ni el CVV (aunque sea simulado)
+    marca_tarjeta: Mapped[str | None] = mapped_column(String(20))
+    ultimos_4: Mapped[str | None] = mapped_column(String(4))

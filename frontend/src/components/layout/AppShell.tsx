@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
+import BotonTema from "@/components/BotonTema";
 import { useAuth } from "@/context/AuthContext";
-import { iniciales } from "@/utils/format";
+import { formatoBytes, formatoGB, iniciales } from "@/utils/format";
 
 // ── Nav data ──────────────────────────────────────────────────────────────────
 
@@ -16,16 +18,15 @@ export const NAV_ITEMS = [
 
 export type NavId = (typeof NAV_ITEMS)[number]["id"];
 
-// Datos de ejemplo para las pantallas que todavía no están conectadas (Avance 2)
-export const STORAGE = { used: 62, total: 100 };
-
 /** Espacio real: lo usado sale de usuarios.almacenamiento_usado_bytes y el total del plan activo. */
 export function useAlmacenamiento() {
   const { usuario } = useAuth();
   const total = usuario?.suscripcion?.almacenamiento_gb ?? 0;
-  const used = +((usuario?.almacenamiento_usado_bytes ?? 0) / 1024 ** 3).toFixed(1);
-  const pct = total ? Math.round((used / total) * 100) : 0;
-  return { used, total, pct };
+  const usadoBytes = usuario?.almacenamiento_usado_bytes ?? 0;
+  const cuotaBytes = total * 1024 ** 3;
+  const used = +(usadoBytes / 1024 ** 3).toFixed(1);
+  const pct = cuotaBytes ? Math.min(100, Math.round((usadoBytes / cuotaBytes) * 100)) : 0;
+  return { used, total, pct, usadoBytes, cuotaBytes, disponibleBytes: Math.max(cuotaBytes - usadoBytes, 0) };
 }
 
 // ── Icon set ──────────────────────────────────────────────────────────────────
@@ -70,6 +71,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ active, onNav, onLogout, collapsed }: SidebarProps) {
+  const navigate = useNavigate();
   const STORAGE = useAlmacenamiento();
   const pct = STORAGE.pct;
 
@@ -112,9 +114,9 @@ export function Sidebar({ active, onNav, onLogout, collapsed }: SidebarProps) {
           return (
             <button
               key={id}
-              onClick={() => onNav(id)}
+              onClick={() => (id === "settings" ? navigate("/configuracion") : onNav(id))}
               className="flex items-center gap-3 px-3 py-2.5 rounded-xl w-full text-left transition-all duration-150"
-              style={{ background: isActive ? "#2E9BFF" : "transparent", color: isActive ? "white" : "#93C5FD" }}
+              style={{ background: isActive ? "#2E9BFF" : "transparent", color: isActive ? "white" : "#BAE6FD" }}
               onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = "rgba(46,155,255,0.15)"; }}
               onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
               title={collapsed ? label : undefined}
@@ -138,7 +140,7 @@ export function Sidebar({ active, onNav, onLogout, collapsed }: SidebarProps) {
           style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
         >
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-xs font-medium" style={{ color: "#93C5FD" }}>Almacenamiento</span>
+            <span className="text-xs font-medium" style={{ color: "#BAE6FD" }}>Almacenamiento</span>
             <span className="text-xs font-bold" style={{ color: "white" }}>{pct}%</span>
           </div>
           <div className="h-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.12)" }}>
@@ -148,7 +150,7 @@ export function Sidebar({ active, onNav, onLogout, collapsed }: SidebarProps) {
             />
           </div>
           <p className="text-[10px] mt-1.5" style={{ color: "#64748B" }}>
-            {STORAGE.used} GB de {STORAGE.total} GB
+            {formatoBytes(STORAGE.usadoBytes)} de {formatoGB(STORAGE.total)}
           </p>
         </div>
       )}
@@ -190,31 +192,31 @@ export function TopHeader({ title, onToggleSidebar, onUpload, actions }: TopHead
     <header
       className="sticky top-0 z-20 flex items-center justify-between px-6 h-16 flex-shrink-0"
       style={{
-        background: "rgba(248,250,252,0.92)",
+        background: "color-mix(in srgb, var(--nv-bg) 92%, transparent)",
         backdropFilter: "blur(12px)",
-        borderBottom: "1px solid #E2E8F0",
+        borderBottom: "1px solid var(--nv-border)",
       }}
     >
       <div className="flex items-center gap-4">
         <button
           onClick={onToggleSidebar}
           className="p-2 rounded-lg transition-colors duration-150"
-          style={{ color: "#64748B" }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "#F1F5F9"; e.currentTarget.style.color = "#334155"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#64748B"; }}
+          style={{ color: "var(--nv-text-3)" }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--nv-muted)"; e.currentTarget.style.color = "var(--nv-text-2)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--nv-text-3)"; }}
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
             <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
           </svg>
         </button>
         {title ? (
-          <h1 className="text-base font-extrabold" style={{ color: "#0F172A", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+          <h1 className="text-base font-extrabold" style={{ color: "var(--nv-text-1)", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             {title}
           </h1>
         ) : (
           <div>
-            <p className="text-xs" style={{ color: "#94A3B8" }}>{greeting},</p>
-            <h1 className="text-base font-extrabold leading-tight" style={{ color: "#0F172A", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            <p className="text-xs" style={{ color: "var(--nv-text-4)" }}>{greeting},</p>
+            <h1 className="text-base font-extrabold leading-tight" style={{ color: "var(--nv-text-1)", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
               {nombre}
             </h1>
           </div>
@@ -223,6 +225,7 @@ export function TopHeader({ title, onToggleSidebar, onUpload, actions }: TopHead
 
       <div className="flex items-center gap-3">
         {actions}
+        <BotonTema />
         <button
           onClick={onUpload}
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white transition-all duration-150"
@@ -232,17 +235,6 @@ export function TopHeader({ title, onToggleSidebar, onUpload, actions }: TopHead
         >
           <NavIcon id="upload" />
           <span className="hidden sm:inline">Subir archivo</span>
-        </button>
-        <button
-          className="relative p-2 rounded-xl transition-colors duration-150"
-          style={{ color: "#64748B" }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "#F1F5F9"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-        >
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <path d="M10 2a6 6 0 0 1 6 6v3l1.5 2.5H2.5L4 11V8a6 6 0 0 1 6-6ZM8.5 16.5a1.5 1.5 0 0 0 3 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" fill="none"/>
-          </svg>
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ background: "#2E9BFF" }} />
         </button>
         <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white cursor-pointer"
           style={{ background: "linear-gradient(135deg, #2E9BFF 0%, #00D1C1 100%)" }}>
@@ -271,7 +263,7 @@ export default function AppShell({
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "#F8FAFC", fontFamily: "'Inter', sans-serif" }}>
+    <div className="nv-app flex h-screen overflow-hidden" style={{ background: "var(--nv-bg)", fontFamily: "'Inter', sans-serif" }}>
       <Sidebar
         active={activeNav}
         onNav={onNav}

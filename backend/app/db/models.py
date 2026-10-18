@@ -7,5 +7,6 @@ from app.db.session import Base  # noqa: F401
 from app.modules.auth.models import Rol, Sesion, TokenUsuario, Usuario  # noqa: F401
 from app.modules.planes.models import Plan, PlanCaracteristica  # noqa: F401
 from app.modules.suscripciones.models import Suscripcion  # noqa: F401
-from app.modules.almacenamiento.models import Archivo, Carpeta
-from app.modules.pagos.models import Pago, MetodoPago  # noqa: F401
+from app.modules.almacenamiento.models import Archivo, Carpeta  # noqa: F401
+from app.modules.pagos.models import Pago  # noqa: F401
+from app.modules.actividad.models import Actividad  # noqa: F401
