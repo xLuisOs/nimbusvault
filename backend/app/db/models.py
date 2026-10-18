@@ -9,3 +9,4 @@ from app.modules.planes.models import Plan, PlanCaracteristica  # noqa: F401
 from app.modules.suscripciones.models import Suscripcion  # noqa: F401
 from app.modules.almacenamiento.models import Archivo, Carpeta  # noqa: F401
 from app.modules.pagos.models import Pago  # noqa: F401
+from app.modules.actividad.models import Actividad  # noqa: F401

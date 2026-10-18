@@ -8,7 +8,10 @@ from sqlalchemy import case, func, select, update
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.security import ahora
 from app.core.storage import AlmacenS3, ErrorAlmacen
+from app.modules.actividad import service as actividad
+from app.modules.actividad.models import TIPO_CARPETA, TIPO_DESCARGA, TIPO_ELIMINACION, TIPO_SUBIDA
 from app.modules.almacenamiento.models import Archivo, Carpeta
 from app.modules.almacenamiento.schemas import ArchivoActualizar, CarpetaActualizar, CarpetaCrear
 from app.modules.auth.models import Usuario
@@ -84,6 +87,7 @@ def crear_carpeta(db: Session, usuario: Usuario, datos: CarpetaCrear) -> Carpeta
         id_usuario=usuario.id_usuario, id_carpeta_padre=datos.id_carpeta_padre, nombre=datos.nombre
     )
     db.add(carpeta)
+    actividad.registrar(db, usuario.id_usuario, TIPO_CARPETA, datos.nombre)
     db.commit()
     db.refresh(carpeta)
     return carpeta
@@ -196,9 +200,11 @@ def subir_archivo(
             clave_objeto=clave,
             tipo_mime=tipo,
             tamano_bytes=tam,
+            creado_en=ahora(),  # con microsegundos: "recientes" ordena bien aunque se suban varios en el mismo segundo
         )
         db.add(nuevo)
-        db.commit()  # archivo + espacio usado en la misma transacción
+        actividad.registrar(db, usuario.id_usuario, TIPO_SUBIDA, nombre, tam, tipo)
+        db.commit()  # archivo + espacio usado + actividad en la misma transacción
     except Exception:
         db.rollback()
         almacen.borrar(clave)  # compensación: no dejamos objetos huérfanos en el bucket
@@ -224,6 +230,12 @@ def obtener_archivo(db: Session, usuario: Usuario, id_archivo: UUID) -> Archivo:
     return archivo
 
 
+def registrar_descarga(db: Session, usuario: Usuario, archivo: Archivo) -> None:
+    actividad.registrar(db, usuario.id_usuario, TIPO_DESCARGA, archivo.nombre_original, archivo.tamano_bytes,
+                        archivo.tipo_mime)
+    db.commit()
+
+
 def actualizar_archivo(db: Session, usuario: Usuario, id_archivo: UUID, datos: ArchivoActualizar) -> Archivo:
     """Renombra y/o mueve. Solo cambia la base: la llave del objeto en el bucket no depende del nombre ni de la carpeta."""
     archivo = obtener_archivo(db, usuario, id_archivo)
@@ -246,6 +258,7 @@ def eliminar_archivo(db: Session, almacen: AlmacenS3, usuario: Usuario, id_archi
     archivo = obtener_archivo(db, usuario, id_archivo)
     clave, tam = archivo.clave_objeto, archivo.tamano_bytes
 
+    actividad.registrar(db, usuario.id_usuario, TIPO_ELIMINACION, archivo.nombre_original, tam, archivo.tipo_mime)
     db.delete(archivo)
     db.execute(
         update(Usuario)

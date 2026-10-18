@@ -166,6 +166,22 @@ class AlmacenS3:
             raise ErrorAlmacen("No se pudo leer el archivo del almacenamiento") from e
         return resp["Body"].iter_chunks(chunk_size=64 * 1024)
 
+    def verificar(self) -> None:
+        """Consulta liviana al bucket para el panel de infraestructura. Lanza ErrorAlmacen si no responde."""
+        if self._use_supabase_rest:
+            headers = {"Authorization": f"Bearer {settings.s3_secret_key}", "apikey": settings.s3_secret_key}
+            try:
+                r = requests.get(f"{self._supabase_rest_base}/bucket/{self.bucket}", headers=headers, timeout=5)
+            except requests.RequestException as e:
+                raise ErrorAlmacen(f"Supabase Storage no responde: {e}") from e
+            if r.status_code != 200:
+                raise ErrorAlmacen(f"Supabase Storage respondió {r.status_code}")
+            return
+        try:
+            self.cliente.head_bucket(Bucket=self.bucket)
+        except (ClientError, BotoCoreError) as e:
+            raise ErrorAlmacen(f"El bucket no responde: {e}") from e
+
     def borrar(self, clave: str) -> None:
         """Borrado de mejor esfuerzo: nunca lanza. Un objeto huérfano es basura, no un error del usuario."""
         if self._use_supabase_rest:
@@ -195,3 +211,11 @@ def get_almacen() -> AlmacenS3:
         return _instancia()
     except ErrorAlmacen as e:
         raise HTTPException(503, str(e))
+
+
+def get_almacen_opcional() -> AlmacenS3 | None:
+    """Como get_almacen, pero sin fallar: el panel admin debe cargar aunque el almacenamiento esté caído."""
+    try:
+        return _instancia()
+    except ErrorAlmacen:
+        return None

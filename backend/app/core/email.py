@@ -97,3 +97,17 @@ def enviar_recuperacion(destino: str, nombre: str, token: str) -> None:
         _plantilla("Restablece tu contraseña", f"Hola {nombre}, recibimos una solicitud para cambiar tu contraseña.",
                    "Crear nueva contraseña", enlace),
     )
+
+
+def enviar_invitacion(destino: str, nombre: str, token: str) -> None:
+    """Cuando un administrador crea la cuenta: el usuario elige su contraseña con el mismo flujo de recuperación."""
+    enlace = f"{settings.frontend_url}/restablecer-contrasena?token={token}"
+    enviar_correo(
+        destino,
+        "Te invitaron a NimbusVault",
+        f"Hola {nombre},\n\nUn administrador creó tu cuenta en NimbusVault. Elige tu contraseña aquí:\n{enlace}\n\n"
+        f"El enlace vence en {settings.verificacion_horas} horas.",
+        _plantilla("Bienvenido a NimbusVault",
+                   f"Hola {nombre}, un administrador creó tu cuenta. Solo falta que elijas tu contraseña.",
+                   "Elegir contraseña", enlace),
+    )

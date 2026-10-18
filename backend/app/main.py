@@ -2,6 +2,7 @@ from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
+from app.modules.admin.router import router as admin_router
 from app.modules.almacenamiento.router import router as almacenamiento_router
 from app.modules.auth.router import router as auth_router
 from app.modules.pagos.router import router as pagos_router
@@ -10,7 +11,7 @@ from app.modules.planes.router import router as planes_router
 
 app = FastAPI(
     title=settings.app_name,
-    version="0.3.0",
+    version="0.5.0",
     description="API de NimbusVault — Storage as a Service (Ingeniería de Software I, URL 2026)",
     docs_url="/api/docs",
     openapi_url="/api/openapi.json",
@@ -37,6 +38,7 @@ def health():
 api.include_router(auth_router)
 api.include_router(planes_router)
 api.include_router(admin_planes_router)
+api.include_router(admin_router)
 api.include_router(almacenamiento_router)
 api.include_router(pagos_router)
 

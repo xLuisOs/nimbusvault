@@ -13,6 +13,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.security import ahora
+from app.modules.actividad import service as actividad
+from app.modules.actividad.models import TIPO_PAGO
 from app.modules.almacenamiento.service import GIB
 from app.modules.auth.models import Usuario
 from app.modules.pagos.models import ESTADO_APROBADO, TIPO_CONTRATACION, Pago
@@ -120,6 +122,7 @@ def contratar_plan(db: Session, usuario: Usuario, datos: ContratarIn) -> PagoOut
             ultimos_4=datos.tarjeta.numero[-4:],
         )
         db.add(pago)
+        actividad.registrar(db, usuario.id_usuario, TIPO_PAGO, f"Plan {plan.nombre} ({datos.periodicidad})")
         db.commit()
     except IntegrityError:
         # Dos contrataciones simultáneas: el índice único deja pasar solo una

@@ -22,7 +22,7 @@ from sqlalchemy import select  # noqa: E402
 
 from app.core import email  # noqa: E402
 from app.core.security import ahora, hash_password  # noqa: E402
-from app.core.storage import ObjetoNoEncontrado, get_almacen  # noqa: E402
+from app.core.storage import ObjetoNoEncontrado, get_almacen, get_almacen_opcional  # noqa: E402
 from app.db import models  # noqa: E402,F401
 from app.db.session import Base, SessionLocal, engine  # noqa: E402
 from app.main import app  # noqa: E402
@@ -50,6 +50,9 @@ class AlmacenFalso:
     def borrar(self, clave: str) -> None:
         self.objetos.pop(clave, None)
 
+    def verificar(self) -> None:
+        pass
+
 
 @pytest.fixture(autouse=True)
 def base_limpia():
@@ -70,8 +73,10 @@ def client():
 def almacen():
     falso = AlmacenFalso()
     app.dependency_overrides[get_almacen] = lambda: falso
+    app.dependency_overrides[get_almacen_opcional] = lambda: falso
     yield falso
     app.dependency_overrides.pop(get_almacen, None)
+    app.dependency_overrides.pop(get_almacen_opcional, None)
 
 
 def auth(token: str) -> dict:
