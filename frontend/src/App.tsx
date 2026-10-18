@@ -19,6 +19,7 @@ import Dashboard from "@/pages/cliente/Dashboard";
 import FileExplorer from "@/pages/cliente/FileExplorer";
 import Payments from "@/pages/cliente/Payments";
 import Consumption from "@/pages/cliente/Consumption";
+import Configuracion from "@/pages/cliente/Configuracion";
 import Admin from "@/pages/admin/Admin";
 import SinAcceso from "@/pages/SinAcceso";
 
@@ -132,6 +133,7 @@ export default function App() {
         <Route path="/archivos" element={<FileExplorer {...nav} />} />
         <Route path="/pagos" element={<Payments {...nav} />} />
         <Route path="/consumo" element={<Consumption {...nav} />} />
+        <Route path="/configuracion" element={<Configuracion {...nav} />} />
         {/* Contratación real: Avance 2. Por ahora el checkout es solo la interfaz */}
         <Route path="/checkout" element={<CheckoutRoute />} />
       </Route>

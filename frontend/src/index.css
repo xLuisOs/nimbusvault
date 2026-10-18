@@ -16,6 +16,81 @@
   --color-border: #CBD5E1;
 }
 
+/* ── Tema claro / oscuro ─────────────────────────────────────────────────────
+   Las pantallas de la app (cliente y admin) usan estas variables en lugar de colores fijos.
+   El tema lo pone utils/tema.ts en <html data-tema="claro|oscuro">. Los colores de marca
+   (#2E9BFF, #00D1C1…) son iguales en los dos temas. */
+:root {
+  --nv-bg: #F8FAFC;
+  --nv-surface: #FFFFFF;
+  --nv-muted: #F1F5F9;
+  --nv-border: #E2E8F0;
+  --nv-border-strong: #CBD5E1;
+  --nv-text-1: #0F172A;
+  --nv-text-2: #334155;
+  --nv-text-3: #64748B;
+  --nv-text-4: #94A3B8;
+
+  --nv-blue-soft: #E0F4FF;
+  --nv-blue-border: #BAE6FD;
+  --nv-red-soft: #FEF2F2;
+  --nv-red-border: #FECACA;
+  --nv-red-strong: #B91C1C;
+  --nv-green-soft: #DCFCE7;
+  --nv-green-border: #A7F3D0;
+  --nv-green-strong: #065F46;
+  --nv-amber-soft: #FFFBEB;
+  --nv-amber-border: #FDE68A;
+  --nv-amber-strong: #B45309;
+  --nv-violet-soft: #F5F3FF;
+  --nv-teal-soft: #E0FBF9;
+}
+
+:root[data-tema="oscuro"] {
+  --nv-bg: #0B1220;
+  --nv-surface: #111B2E;
+  --nv-muted: #1A263D;
+  --nv-border: #253552;
+  --nv-border-strong: #34476B;
+  --nv-text-1: #E8EEF8;
+  --nv-text-2: #C5D0E2;
+  --nv-text-3: #95A3BC;
+  --nv-text-4: #6E7E9A;
+
+  --nv-blue-soft: rgba(46, 155, 255, 0.16);
+  --nv-blue-border: rgba(147, 197, 253, 0.3);
+  --nv-red-soft: rgba(255, 107, 107, 0.15);
+  --nv-red-border: rgba(252, 165, 165, 0.3);
+  --nv-red-strong: #FCA5A5;
+  --nv-green-soft: rgba(0, 200, 150, 0.15);
+  --nv-green-border: rgba(110, 231, 183, 0.3);
+  --nv-green-strong: #6EE7B7;
+  --nv-amber-soft: rgba(251, 191, 36, 0.14);
+  --nv-amber-border: rgba(252, 211, 77, 0.3);
+  --nv-amber-strong: #FCD34D;
+  --nv-violet-soft: rgba(167, 139, 250, 0.16);
+  --nv-teal-soft: rgba(0, 209, 193, 0.15);
+}
+
+/* Controles nativos (scroll, calendario, checkbox) oscuros solo dentro de la app;
+   el landing, el login y el registro se quedan siempre en claro */
+:root[data-tema="oscuro"] .nv-app {
+  color-scheme: dark;
+}
+
+.nv-cambiando-tema, .nv-cambiando-tema * {
+  transition: none !important;
+}
+
+/* Campos de formulario dentro de la app: que tomen los colores del tema */
+.nv-app input, .nv-app select, .nv-app textarea {
+  background-color: var(--nv-surface);
+  color: var(--nv-text-1);
+}
+.nv-app input::placeholder, .nv-app textarea::placeholder {
+  color: var(--nv-text-4);
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
 }

@@ -79,17 +79,17 @@ export default function SubirArchivoModal({ onClose, onSubido, onVerArchivos }: 
     >
       <div
         className="w-full max-w-md rounded-2xl overflow-hidden"
-        style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", boxShadow: "0 24px 64px rgba(14,30,60,0.18)" }}
+        style={{ background: "var(--nv-bg)", border: "1px solid var(--nv-border)", boxShadow: "0 24px 64px rgba(14,30,60,0.18)" }}
       >
-        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid #E2E8F0", background: "white" }}>
-          <h2 className="text-sm font-bold" style={{ color: "#0F172A", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid var(--nv-border)", background: "var(--nv-surface)" }}>
+          <h2 className="text-sm font-bold" style={{ color: "var(--nv-text-1)", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             Subir archivos
           </h2>
           <button
             onClick={onClose}
             disabled={trabajando}
             className="p-1.5 rounded-lg transition-colors disabled:opacity-40"
-            style={{ color: "#94A3B8" }}
+            style={{ color: "var(--nv-text-4)" }}
             aria-label="Cerrar"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -102,20 +102,20 @@ export default function SubirArchivoModal({ onClose, onSubido, onVerArchivos }: 
           {items.length === 0 ? (
             <div
               className="rounded-xl flex flex-col items-center justify-center gap-3 py-10 px-6 text-center cursor-pointer transition-all duration-150"
-              style={{ border: `2px dashed ${dragging ? "#2E9BFF" : "#CBD5E1"}`, background: dragging ? "#E0F4FF" : "white" }}
+              style={{ border: `2px dashed ${dragging ? "#2E9BFF" : "var(--nv-border-strong)"}`, background: dragging ? "var(--nv-blue-soft)" : "var(--nv-surface)" }}
               onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
               onDragLeave={() => setDragging(false)}
               onDrop={(e) => { e.preventDefault(); setDragging(false); subir(e.dataTransfer.files); }}
               onClick={() => fileRef.current?.click()}
             >
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: "#E0F4FF", color: "#2E9BFF" }}>
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: "var(--nv-blue-soft)", color: "#2E9BFF" }}>
                 <NavIcon id="upload" />
               </div>
               <div>
-                <p className="text-sm font-semibold" style={{ color: "#334155" }}>
+                <p className="text-sm font-semibold" style={{ color: "var(--nv-text-2)" }}>
                   Arrastra aquí o <span style={{ color: "#2E9BFF" }}>selecciona archivos</span>
                 </p>
-                <p className="text-xs mt-1" style={{ color: "#94A3B8" }}>
+                <p className="text-xs mt-1" style={{ color: "var(--nv-text-4)" }}>
                   Se guardan en la raíz de Mis archivos · máx. {MAX_MB} MB por archivo
                 </p>
               </div>
@@ -124,9 +124,9 @@ export default function SubirArchivoModal({ onClose, onSubido, onVerArchivos }: 
           ) : (
             <div className="flex flex-col gap-2.5">
               {items.map((it, i) => (
-                <div key={i} className="rounded-xl px-4 py-3" style={{ background: "white", border: "1px solid #E2E8F0" }}>
+                <div key={i} className="rounded-xl px-4 py-3" style={{ background: "var(--nv-surface)", border: "1px solid var(--nv-border)" }}>
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-medium truncate" style={{ color: "#0F172A" }} title={it.archivo.name}>
+                    <p className="text-sm font-medium truncate" style={{ color: "var(--nv-text-1)" }} title={it.archivo.name}>
                       {it.archivo.name}
                     </p>
                     <span
@@ -137,11 +137,11 @@ export default function SubirArchivoModal({ onClose, onSubido, onVerArchivos }: 
                         : it.estado === "subiendo" ? `${it.pct}%` : "En cola"}
                     </span>
                   </div>
-                  <p className="text-[11px] mt-0.5" style={{ color: it.error ? "#DC2626" : "#94A3B8" }}>
+                  <p className="text-[11px] mt-0.5" style={{ color: it.error ? "#DC2626" : "var(--nv-text-4)" }}>
                     {it.error ?? formatoBytes(it.archivo.size)}
                   </p>
                   {(it.estado === "subiendo" || it.estado === "listo") && (
-                    <div className="h-1.5 rounded-full mt-2" style={{ background: "#E2E8F0" }}>
+                    <div className="h-1.5 rounded-full mt-2" style={{ background: "var(--nv-border)" }}>
                       <div
                         className="h-1.5 rounded-full transition-all duration-200"
                         style={{ width: `${it.pct}%`, background: "linear-gradient(90deg,#2E9BFF,#00D1C1)" }}
@@ -158,7 +158,7 @@ export default function SubirArchivoModal({ onClose, onSubido, onVerArchivos }: 
               <button
                 onClick={() => setItems([])}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-                style={{ background: "#F1F5F9", color: "#334155" }}
+                style={{ background: "var(--nv-muted)", color: "var(--nv-text-2)" }}
               >
                 Subir más
               </button>
@@ -171,16 +171,16 @@ export default function SubirArchivoModal({ onClose, onSubido, onVerArchivos }: 
               </button>
             </div>
           ) : (
-            <div className="rounded-xl p-3 flex items-center gap-3" style={{ background: "#F1F5F9" }}>
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "#E0F4FF", color: "#2E9BFF" }}>
+            <div className="rounded-xl p-3 flex items-center gap-3" style={{ background: "var(--nv-muted)" }}>
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "var(--nv-blue-soft)", color: "#2E9BFF" }}>
                 <NavIcon id="cloud" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-medium" style={{ color: "#334155" }}>Espacio disponible</span>
+                  <span className="text-xs font-medium" style={{ color: "var(--nv-text-2)" }}>Espacio disponible</span>
                   <span className="text-xs font-bold" style={{ color: "#2E9BFF" }}>{formatoBytes(disponibleBytes)} libres</span>
                 </div>
-                <div className="h-1.5 rounded-full" style={{ background: "#E2E8F0" }}>
+                <div className="h-1.5 rounded-full" style={{ background: "var(--nv-border)" }}>
                   <div className="h-1.5 rounded-full" style={{ width: `${usadoPct}%`, background: "linear-gradient(90deg,#2E9BFF,#00D1C1)" }} />
                 </div>
               </div>

@@ -80,25 +80,25 @@ function ContextMenu({ menu, onClose, onAction }: {
           // Que no se salga de la pantalla si se abre cerca del borde
           top: Math.min(menu.y, window.innerHeight - 220),
           left: Math.min(menu.x, window.innerWidth - 180),
-          background: "white",
-          border: "1px solid #E2E8F0",
+          background: "var(--nv-surface)",
+          border: "1px solid var(--nv-border)",
           boxShadow: "0 8px 32px rgba(14,30,60,0.14)",
           minWidth: "168px",
         }}
       >
         {actions.map((a, i) =>
           a.id === "divider" ? (
-            <div key={i} className="my-1 mx-3 h-px" style={{ background: "#F1F5F9" }} />
+            <div key={i} className="my-1 mx-3 h-px" style={{ background: "var(--nv-muted)" }} />
           ) : (
             <button
               key={a.id}
               onClick={() => { onAction(a.id, menu.item); onClose(); }}
               className="flex items-center gap-2.5 w-full px-4 py-2 text-sm transition-colors duration-100"
-              style={{ color: "danger" in a ? "#EF4444" : "#334155" }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "danger" in a ? "#FEF2F2" : "#F8FAFC"; }}
+              style={{ color: "danger" in a ? "#EF4444" : "var(--nv-text-2)" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "danger" in a ? "var(--nv-red-soft)" : "var(--nv-bg)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
             >
-              <span style={{ color: "danger" in a ? "#EF4444" : "#94A3B8" }}>
+              <span style={{ color: "danger" in a ? "#EF4444" : "var(--nv-text-4)" }}>
                 <NavIcon id={a.icon} size={15} />
               </span>
               {a.label}
@@ -129,23 +129,23 @@ function ModalBase({ titulo, icono, color, bg, ancho = "max-w-sm", onClose, chil
     >
       <div
         className={`w-full ${ancho} rounded-2xl overflow-hidden`}
-        style={{ background: "white", border: "1px solid #E2E8F0", boxShadow: "0 24px 64px rgba(14,30,60,0.18)" }}
+        style={{ background: "var(--nv-surface)", border: "1px solid var(--nv-border)", boxShadow: "0 24px 64px rgba(14,30,60,0.18)" }}
       >
-        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid #F1F5F9" }}>
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid var(--nv-muted)" }}>
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: bg, color }}>
               <NavIcon id={icono} size={15} />
             </div>
-            <h2 className="text-sm font-bold truncate" style={{ color: "#0F172A", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            <h2 className="text-sm font-bold truncate" style={{ color: "var(--nv-text-1)", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
               {titulo}
             </h2>
           </div>
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg transition-colors"
-            style={{ color: "#94A3B8" }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "#F1F5F9"; e.currentTarget.style.color = "#334155"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#94A3B8"; }}
+            style={{ color: "var(--nv-text-4)" }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--nv-muted)"; e.currentTarget.style.color = "var(--nv-text-2)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--nv-text-4)"; }}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
@@ -160,7 +160,7 @@ function ModalBase({ titulo, icono, color, bg, ancho = "max-w-sm", onClose, chil
 
 function MensajeError({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-xs font-medium px-3 py-2 rounded-lg" style={{ color: "#DC2626", background: "#FEF2F2" }}>
+    <p className="text-xs font-medium px-3 py-2 rounded-lg" style={{ color: "#DC2626", background: "var(--nv-red-soft)" }}>
       {children}
     </p>
   );
@@ -182,9 +182,9 @@ function BotonesModal({ onCancel, onOk, textoOk, cargando, deshabilitado, peligr
       <button
         onClick={onCancel}
         className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all"
-        style={{ background: "#F1F5F9", color: "#334155" }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = "#E2E8F0"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = "#F1F5F9"; }}
+        style={{ background: "var(--nv-muted)", color: "var(--nv-text-2)" }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--nv-border)"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = "var(--nv-muted)"; }}
       >
         Cancelar
       </button>
@@ -235,25 +235,25 @@ function UploadModal({ idCarpeta, destino, onClose, onUploaded }: {
   }
 
   return (
-    <ModalBase titulo="Subir archivo" icono="upload" color="#2E9BFF" bg="#E0F4FF" ancho="max-w-md" onClose={onClose}>
+    <ModalBase titulo="Subir archivo" icono="upload" color="#2E9BFF" bg="var(--nv-blue-soft)" ancho="max-w-md" onClose={onClose}>
       <div className="p-6">
         {phase === "done" ? (
           <div className="flex flex-col items-center gap-5 py-4 text-center">
             <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: "linear-gradient(135deg,#00C896,#00D1C1)" }}>
               <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-                <path d="M6 14l5 5 11-10" stroke="white" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M6 14l5 5 11-10" stroke="var(--nv-surface)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
             <div>
-              <p className="text-base font-bold mb-1" style={{ color: "#0F172A" }}>¡Archivo subido!</p>
+              <p className="text-base font-bold mb-1" style={{ color: "var(--nv-text-1)" }}>¡Archivo subido!</p>
               <p className="text-sm font-medium break-all" style={{ color: "#2E9BFF" }}>{fileName}</p>
-              <p className="text-xs mt-1" style={{ color: "#94A3B8" }}>Ya está disponible en «{destino}».</p>
+              <p className="text-xs mt-1" style={{ color: "var(--nv-text-4)" }}>Ya está disponible en «{destino}».</p>
             </div>
             <div className="flex gap-3">
               <button
                 onClick={() => setPhase("idle")}
                 className="px-6 py-2.5 rounded-xl text-sm font-semibold"
-                style={{ background: "#F1F5F9", color: "#334155" }}
+                style={{ background: "var(--nv-muted)", color: "var(--nv-text-2)" }}
               >
                 Subir otro
               </button>
@@ -269,18 +269,18 @@ function UploadModal({ idCarpeta, destino, onClose, onUploaded }: {
         ) : phase === "uploading" ? (
           <div className="flex flex-col gap-5 py-2">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#E0F4FF", color: "#2E9BFF" }}>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "var(--nv-blue-soft)", color: "#2E9BFF" }}>
                 <NavIcon id="cloud" size={18} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold truncate" style={{ color: "#0F172A" }}>{fileName}</p>
-                <p className="text-xs" style={{ color: "#94A3B8" }}>
+                <p className="text-sm font-semibold truncate" style={{ color: "var(--nv-text-1)" }}>{fileName}</p>
+                <p className="text-xs" style={{ color: "var(--nv-text-4)" }}>
                   {progress < 100 ? "Subiendo…" : "Guardando en tu almacenamiento…"}
                 </p>
               </div>
               <span className="text-sm font-bold" style={{ color: "#2E9BFF" }}>{progress}%</span>
             </div>
-            <div className="h-2 rounded-full" style={{ background: "#E2E8F0" }}>
+            <div className="h-2 rounded-full" style={{ background: "var(--nv-border)" }}>
               <div
                 className="h-2 rounded-full transition-all duration-150"
                 style={{ width: `${progress}%`, background: "linear-gradient(90deg,#2E9BFF,#00D1C1)" }}
@@ -293,8 +293,8 @@ function UploadModal({ idCarpeta, destino, onClose, onUploaded }: {
             <div
               className="rounded-2xl flex flex-col items-center justify-center gap-4 py-12 px-6 text-center cursor-pointer transition-all duration-200 select-none"
               style={{
-                border: `2px dashed ${dragging ? "#2E9BFF" : "#94A3B8"}`,
-                background: dragging ? "#E0F4FF" : "#FAFBFC",
+                border: `2px dashed ${dragging ? "#2E9BFF" : "var(--nv-text-4)"}`,
+                background: dragging ? "var(--nv-blue-soft)" : "var(--nv-bg)",
               }}
               onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
               onDragLeave={() => setDragging(false)}
@@ -308,7 +308,7 @@ function UploadModal({ idCarpeta, destino, onClose, onUploaded }: {
               <div
                 className="w-16 h-16 rounded-2xl flex items-center justify-center transition-transform duration-200"
                 style={{
-                  background: dragging ? "#2E9BFF" : "#E0F4FF",
+                  background: dragging ? "#2E9BFF" : "var(--nv-blue-soft)",
                   color: dragging ? "white" : "#2E9BFF",
                   transform: dragging ? "scale(1.1)" : "scale(1)",
                 }}
@@ -316,16 +316,16 @@ function UploadModal({ idCarpeta, destino, onClose, onUploaded }: {
                 <NavIcon id="cloud" size={32} />
               </div>
               <div>
-                <p className="text-sm font-semibold" style={{ color: "#334155" }}>
+                <p className="text-sm font-semibold" style={{ color: "var(--nv-text-2)" }}>
                   Arrastra tu archivo aquí
                 </p>
-                <p className="text-sm mt-0.5" style={{ color: "#94A3B8" }}>
+                <p className="text-sm mt-0.5" style={{ color: "var(--nv-text-4)" }}>
                   o{" "}
                   <span className="font-semibold" style={{ color: "#2E9BFF" }}>
                     haz clic para seleccionar
                   </span>
                 </p>
-                <p className="text-xs mt-2" style={{ color: "#CBD5E1" }}>
+                <p className="text-xs mt-2" style={{ color: "var(--nv-border-strong)" }}>
                   Se guardará en «{destino}»
                   {cuotaBytes > 0 && <> · {formatoBytes(disponibleBytes)} disponibles</>}
                 </p>
@@ -400,7 +400,7 @@ function NameModal({ titulo, icono, color, bg, etiqueta, inicial = "", placehold
     <ModalBase titulo={titulo} icono={icono} color={color} bg={bg} onClose={onClose}>
       <div className="p-6 flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-semibold" style={{ color: "#334155" }}>{etiqueta}</label>
+          <label className="text-sm font-semibold" style={{ color: "var(--nv-text-2)" }}>{etiqueta}</label>
           <input
             autoFocus
             type="text"
@@ -411,9 +411,9 @@ function NameModal({ titulo, icono, color, bg, etiqueta, inicial = "", placehold
             onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
             className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
             style={{
-              background: "white",
-              border: `1.5px solid ${error ? "#FF6B6B" : "#E2E8F0"}`,
-              color: "#0F172A",
+              background: "var(--nv-surface)",
+              border: `1.5px solid ${error ? "#FF6B6B" : "var(--nv-border)"}`,
+              color: "var(--nv-text-1)",
             }}
             onFocus={(e) => {
               // Al renombrar se selecciona el nombre sin la extensión
@@ -422,7 +422,7 @@ function NameModal({ titulo, icono, color, bg, etiqueta, inicial = "", placehold
               if (!error) e.currentTarget.style.borderColor = "#2E9BFF";
               e.currentTarget.style.boxShadow = "0 0 0 3px rgba(46,155,255,0.12)";
             }}
-            onBlur={(e) => { if (!error) { e.currentTarget.style.borderColor = "#E2E8F0"; e.currentTarget.style.boxShadow = "none"; } }}
+            onBlur={(e) => { if (!error) { e.currentTarget.style.borderColor = "var(--nv-border)"; e.currentTarget.style.boxShadow = "none"; } }}
           />
           {error && <p className="text-xs font-medium" style={{ color: "#FF6B6B" }}>{error}</p>}
         </div>
@@ -455,9 +455,9 @@ function ConfirmDeleteModal({ item, onClose, onConfirm }: {
   }
 
   return (
-    <ModalBase titulo={esCarpeta ? "Eliminar carpeta" : "Eliminar archivo"} icono="trash" color="#EF4444" bg="#FEF2F2" onClose={onClose}>
+    <ModalBase titulo={esCarpeta ? "Eliminar carpeta" : "Eliminar archivo"} icono="trash" color="#EF4444" bg="var(--nv-red-soft)" onClose={onClose}>
       <div className="p-6 flex flex-col gap-4">
-        <p className="text-sm" style={{ color: "#334155" }}>
+        <p className="text-sm" style={{ color: "var(--nv-text-2)" }}>
           ¿Seguro que quieres eliminar <span className="font-semibold break-all">«{item.name}»</span>?
           {esCarpeta
             ? " Solo se pueden eliminar carpetas vacías."
@@ -511,18 +511,18 @@ function MoveModal({ item, onClose, onMove }: {
   const mismaCarpeta = idDestino === item.idCarpeta;
 
   return (
-    <ModalBase titulo={`Mover «${item.name}»`} icono="folder" color="#F59E0B" bg="#FFFBEB" ancho="max-w-md" onClose={onClose}>
+    <ModalBase titulo={`Mover «${item.name}»`} icono="folder" color="#F59E0B" bg="var(--nv-amber-soft)" ancho="max-w-md" onClose={onClose}>
       <div className="p-6 flex flex-col gap-4">
         {/* Breadcrumb del destino */}
         <nav className="flex items-center gap-1.5 flex-wrap text-sm">
           {[{ id_carpeta: "", nombre: "Mis archivos" }, ...ruta].map((r, idx, todos) => (
             <span key={r.id_carpeta || "raiz"} className="flex items-center gap-1.5">
-              {idx > 0 && <span style={{ color: "#CBD5E1" }}>/</span>}
+              {idx > 0 && <span style={{ color: "var(--nv-border-strong)" }}>/</span>}
               <button
                 onClick={() => setRuta(ruta.slice(0, idx))}
                 disabled={idx === todos.length - 1}
                 className="font-medium"
-                style={{ color: idx === todos.length - 1 ? "#0F172A" : "#2E9BFF" }}
+                style={{ color: idx === todos.length - 1 ? "var(--nv-text-1)" : "#2E9BFF" }}
               >
                 {r.nombre}
               </button>
@@ -530,25 +530,25 @@ function MoveModal({ item, onClose, onMove }: {
           ))}
         </nav>
 
-        <div className="rounded-xl overflow-y-auto" style={{ border: "1px solid #E2E8F0", maxHeight: "16rem", minHeight: "8rem" }}>
+        <div className="rounded-xl overflow-y-auto" style={{ border: "1px solid var(--nv-border)", maxHeight: "16rem", minHeight: "8rem" }}>
           {cargando ? (
-            <p className="text-xs text-center py-10" style={{ color: "#94A3B8" }}>Cargando carpetas…</p>
+            <p className="text-xs text-center py-10" style={{ color: "var(--nv-text-4)" }}>Cargando carpetas…</p>
           ) : carpetas.length === 0 ? (
-            <p className="text-xs text-center py-10" style={{ color: "#94A3B8" }}>No hay subcarpetas aquí.</p>
+            <p className="text-xs text-center py-10" style={{ color: "var(--nv-text-4)" }}>No hay subcarpetas aquí.</p>
           ) : (
             carpetas.map((c) => (
               <button
                 key={c.id_carpeta}
                 onClick={() => setRuta([...ruta, { id_carpeta: c.id_carpeta, nombre: c.nombre }])}
                 className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-left transition-colors"
-                style={{ color: "#334155", borderBottom: "1px solid #F8FAFC" }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "#F8FAFC"; }}
+                style={{ color: "var(--nv-text-2)", borderBottom: "1px solid var(--nv-bg)" }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--nv-bg)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
               >
                 <span style={{ color: "#F59E0B" }}><NavIcon id="folder" size={16} /></span>
                 <span className="flex-1 truncate">{c.nombre}</span>
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M5 3l4 4-4 4" stroke="#CBD5E1" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M5 3l4 4-4 4" stroke="var(--nv-border-strong)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </button>
             ))
@@ -556,7 +556,7 @@ function MoveModal({ item, onClose, onMove }: {
         </div>
 
         {mismaCarpeta && (
-          <p className="text-xs" style={{ color: "#94A3B8" }}>El archivo ya está en esta carpeta.</p>
+          <p className="text-xs" style={{ color: "var(--nv-text-4)" }}>El archivo ya está en esta carpeta.</p>
         )}
         {error && <MensajeError>{error}</MensajeError>}
         <BotonesModal onCancel={onClose} onOk={mover} textoOk="Mover aquí" cargando={moviendo} deshabilitado={mismaCarpeta} />
@@ -585,7 +585,7 @@ function ItemCard({ item, view, onOpen, onAction, onContext, selected, onSelect 
     return (
       <div
         className="flex items-center gap-4 px-5 py-3 transition-colors duration-100 cursor-pointer group"
-        style={{ background: selected ? "#F0F9FF" : "transparent", borderBottom: "1px solid #F8FAFC" }}
+        style={{ background: selected ? "var(--nv-bg)" : "transparent", borderBottom: "1px solid var(--nv-bg)" }}
         onClick={() => esCarpeta ? onOpen(item) : onSelect(item.id)}
         onDoubleClick={() => !esCarpeta && onOpen(item)}
         onContextMenu={(e) => { e.preventDefault(); onContext(e, item); }}
@@ -594,12 +594,12 @@ function ItemCard({ item, view, onOpen, onAction, onContext, selected, onSelect 
         <div
           className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-all"
           style={{
-            border: `1.5px solid ${selected ? "#2E9BFF" : "#CBD5E1"}`,
-            background: selected ? "#2E9BFF" : "white",
+            border: `1.5px solid ${selected ? "#2E9BFF" : "var(--nv-border-strong)"}`,
+            background: selected ? "#2E9BFF" : "var(--nv-surface)",
             opacity: selected ? 1 : 0,
           }}
         >
-          {selected && <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+          {selected && <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2 2 4-4" stroke="var(--nv-surface)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
         </div>
 
         {/* Icon */}
@@ -612,17 +612,17 @@ function ItemCard({ item, view, onOpen, onAction, onContext, selected, onSelect 
 
         {/* Name + meta */}
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate" style={{ color: "#0F172A" }} title={item.name}>{item.name}</p>
+          <p className="text-sm font-medium truncate" style={{ color: "var(--nv-text-1)" }} title={item.name}>{item.name}</p>
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: meta.bg, color: meta.color }}>{item.label}</span>
           </div>
         </div>
 
         {/* Size / date */}
-        <span className="text-xs hidden sm:block flex-shrink-0 w-20 text-right" style={{ color: "#94A3B8" }}>
+        <span className="text-xs hidden sm:block flex-shrink-0 w-20 text-right" style={{ color: "var(--nv-text-4)" }}>
           {item.size ?? "—"}
         </span>
-        <span className="text-xs hidden md:block flex-shrink-0 w-36 text-right" style={{ color: "#94A3B8" }}>
+        <span className="text-xs hidden md:block flex-shrink-0 w-36 text-right" style={{ color: "var(--nv-text-4)" }}>
           {item.modified}
         </span>
 
@@ -632,10 +632,10 @@ function ItemCard({ item, view, onOpen, onAction, onContext, selected, onSelect 
             <button
               key={act}
               className="p-1.5 rounded-lg transition-colors"
-              style={{ color: "#94A3B8" }}
+              style={{ color: "var(--nv-text-4)" }}
               title={act === "download" ? "Descargar" : "Más opciones"}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "#F1F5F9"; e.currentTarget.style.color = "#334155"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#94A3B8"; }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "var(--nv-muted)"; e.currentTarget.style.color = "var(--nv-text-2)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--nv-text-4)"; }}
               onClick={(e) => { e.stopPropagation(); act === "more" ? onContext(e, item) : onAction("download", item); }}
             >
               <NavIcon id={act} size={15} />
@@ -651,8 +651,8 @@ function ItemCard({ item, view, onOpen, onAction, onContext, selected, onSelect 
     <div
       className="rounded-2xl p-4 flex flex-col gap-3 cursor-pointer transition-all duration-150 group relative"
       style={{
-        background: selected ? "#EFF8FF" : "white",
-        border: `1.5px solid ${selected ? "#2E9BFF" : "#E2E8F0"}`,
+        background: selected ? "var(--nv-bg)" : "var(--nv-surface)",
+        border: `1.5px solid ${selected ? "#2E9BFF" : "var(--nv-border)"}`,
         boxShadow: selected ? "0 0 0 2px rgba(46,155,255,0.15)" : "none",
       }}
       onClick={() => esCarpeta ? onOpen(item) : onSelect(item.id)}
@@ -660,13 +660,13 @@ function ItemCard({ item, view, onOpen, onAction, onContext, selected, onSelect 
       onContextMenu={(e) => { e.preventDefault(); onContext(e, item); }}
       onMouseEnter={(e) => {
         if (!selected) {
-          (e.currentTarget as HTMLDivElement).style.borderColor = "#BAE6FD";
+          (e.currentTarget as HTMLDivElement).style.borderColor = "var(--nv-blue-border)";
           (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 16px rgba(0,0,0,0.06)";
         }
       }}
       onMouseLeave={(e) => {
         if (!selected) {
-          (e.currentTarget as HTMLDivElement).style.borderColor = "#E2E8F0";
+          (e.currentTarget as HTMLDivElement).style.borderColor = "var(--nv-border)";
           (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
         }
       }}
@@ -674,9 +674,9 @@ function ItemCard({ item, view, onOpen, onAction, onContext, selected, onSelect 
       {/* Three-dot menu */}
       <button
         className="absolute top-2.5 right-2.5 p-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-        style={{ color: "#94A3B8" }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = "#F1F5F9"; e.currentTarget.style.color = "#334155"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#94A3B8"; }}
+        style={{ color: "var(--nv-text-4)" }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--nv-muted)"; e.currentTarget.style.color = "var(--nv-text-2)"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--nv-text-4)"; }}
         onClick={(e) => { e.stopPropagation(); onContext(e, item); }}
       >
         <NavIcon id="more" size={16} />
@@ -690,15 +690,15 @@ function ItemCard({ item, view, onOpen, onAction, onContext, selected, onSelect 
       </div>
 
       <div className="min-w-0">
-        <p className="text-sm font-semibold truncate" style={{ color: "#0F172A" }} title={item.name}>{item.name}</p>
-        <p className="text-xs mt-0.5" style={{ color: "#94A3B8" }}>
+        <p className="text-sm font-semibold truncate" style={{ color: "var(--nv-text-1)" }} title={item.name}>{item.name}</p>
+        <p className="text-xs mt-0.5" style={{ color: "var(--nv-text-4)" }}>
           {item.size ?? "Carpeta"}
         </p>
       </div>
 
       <div className="flex items-center justify-between mt-auto">
         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: meta.bg, color: meta.color }}>{item.label}</span>
-        <span className="text-[10px]" style={{ color: "#CBD5E1" }}>{item.modified.split(",")[0]}</span>
+        <span className="text-[10px]" style={{ color: "var(--nv-border-strong)" }}>{item.modified.split(",")[0]}</span>
       </div>
     </div>
   );
@@ -712,27 +712,27 @@ function StorageBar() {
     <div
       className="fixed bottom-4 right-6 z-20 flex items-center gap-3 px-4 py-2.5 rounded-2xl shadow-lg"
       style={{
-        background: "white",
-        border: "1px solid #E2E8F0",
+        background: "var(--nv-surface)",
+        border: "1px solid var(--nv-border)",
         boxShadow: "0 4px 20px rgba(14,30,60,0.10)",
       }}
     >
-      <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: "#E0F4FF", color: "#2E9BFF" }}>
+      <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: "var(--nv-blue-soft)", color: "#2E9BFF" }}>
         <NavIcon id="cloud" size={13} />
       </div>
       <div>
         <div className="flex items-center gap-2 mb-1">
-          <div className="w-24 h-1.5 rounded-full" style={{ background: "#E2E8F0" }}>
+          <div className="w-24 h-1.5 rounded-full" style={{ background: "var(--nv-border)" }}>
             <div
               className="h-1.5 rounded-full"
               style={{ width: `${pct}%`, background: pct >= 90 ? "#FF6B6B" : "linear-gradient(90deg,#2E9BFF,#00D1C1)" }}
             />
           </div>
-          <span className="text-[10px] font-bold" style={{ color: "#334155" }}>{pct}%</span>
+          <span className="text-[10px] font-bold" style={{ color: "var(--nv-text-2)" }}>{pct}%</span>
         </div>
-        <p className="text-[10px]" style={{ color: "#94A3B8" }}>
+        <p className="text-[10px]" style={{ color: "var(--nv-text-4)" }}>
           {cuotaBytes ? (
-            <><span className="font-semibold" style={{ color: "#0F172A" }}>{formatoBytes(disponibleBytes)}</span> disponibles</>
+            <><span className="font-semibold" style={{ color: "var(--nv-text-1)" }}>{formatoBytes(disponibleBytes)}</span> disponibles</>
           ) : (
             "Sin plan activo"
           )}
@@ -928,7 +928,7 @@ export default function FileExplorer({ onLogout, onDashboard, onPlans, onPayment
           <div className="flex items-center gap-2 mr-1">
             {/* Search (en la carpeta actual) */}
             <div className="relative hidden sm:block">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "#94A3B8" }}>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--nv-text-4)" }}>
                 <NavIcon id="search" size={15} />
               </span>
               <input
@@ -938,13 +938,13 @@ export default function FileExplorer({ onLogout, onDashboard, onPlans, onPayment
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-8 pr-4 py-2 rounded-xl text-sm outline-none transition-all"
                 style={{
-                  background: "#F1F5F9",
+                  background: "var(--nv-muted)",
                   border: "1.5px solid transparent",
-                  color: "#0F172A",
+                  color: "var(--nv-text-1)",
                   width: "200px",
                 }}
-                onFocus={(e) => { e.currentTarget.style.borderColor = "#2E9BFF"; e.currentTarget.style.background = "white"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(46,155,255,0.10)"; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = "transparent"; e.currentTarget.style.background = "#F1F5F9"; e.currentTarget.style.boxShadow = "none"; }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = "#2E9BFF"; e.currentTarget.style.background = "var(--nv-surface)"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(46,155,255,0.10)"; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = "transparent"; e.currentTarget.style.background = "var(--nv-muted)"; e.currentTarget.style.boxShadow = "none"; }}
               />
             </div>
           </div>
@@ -954,7 +954,7 @@ export default function FileExplorer({ onLogout, onDashboard, onPlans, onPayment
           {/* Sub-toolbar */}
           <div
             className="sticky top-0 z-10 flex items-center justify-between px-6 py-3 flex-wrap gap-3"
-            style={{ background: "rgba(248,250,252,0.95)", borderBottom: "1px solid #F1F5F9", backdropFilter: "blur(8px)" }}
+            style={{ background: "color-mix(in srgb, var(--nv-bg) 95%, transparent)", borderBottom: "1px solid var(--nv-muted)", backdropFilter: "blur(8px)" }}
           >
             {/* Breadcrumb */}
             <nav className="flex items-center gap-1.5 flex-wrap">
@@ -962,18 +962,18 @@ export default function FileExplorer({ onLogout, onDashboard, onPlans, onPayment
                 <span key={crumb.id ?? "raiz"} className="flex items-center gap-1.5">
                   {idx > 0 && (
                     <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                      <path d="M5 3l4 4-4 4" stroke="#CBD5E1" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M5 3l4 4-4 4" stroke="var(--nv-border-strong)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                   )}
                   <button
                     onClick={() => idx < breadcrumbs.length - 1 && irA(crumb.id)}
                     className="text-sm transition-colors duration-150 font-medium"
-                    style={{ color: idx === breadcrumbs.length - 1 ? "#0F172A" : "#94A3B8" }}
+                    style={{ color: idx === breadcrumbs.length - 1 ? "var(--nv-text-1)" : "var(--nv-text-4)" }}
                     onMouseEnter={(e) => { if (idx < breadcrumbs.length - 1) e.currentTarget.style.color = "#2E9BFF"; }}
-                    onMouseLeave={(e) => { if (idx < breadcrumbs.length - 1) e.currentTarget.style.color = "#94A3B8"; }}
+                    onMouseLeave={(e) => { if (idx < breadcrumbs.length - 1) e.currentTarget.style.color = "var(--nv-text-4)"; }}
                   >
                     {idx === breadcrumbs.length - 1
-                      ? <span className="font-bold" style={{ color: "#0F172A" }}>{crumb.nombre}</span>
+                      ? <span className="font-bold" style={{ color: "var(--nv-text-1)" }}>{crumb.nombre}</span>
                       : crumb.nombre}
                   </button>
                 </span>
@@ -985,7 +985,7 @@ export default function FileExplorer({ onLogout, onDashboard, onPlans, onPayment
               {selected.size > 0 && (
                 <div
                   className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold"
-                  style={{ background: "#E0F4FF", color: "#2E9BFF" }}
+                  style={{ background: "var(--nv-blue-soft)", color: "#2E9BFF" }}
                 >
                   {selected.size} seleccionado{selected.size > 1 ? "s" : ""}
                   <button
@@ -1005,25 +1005,25 @@ export default function FileExplorer({ onLogout, onDashboard, onPlans, onPayment
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
                   className="text-xs font-semibold pl-3 pr-7 py-1.5 rounded-lg appearance-none cursor-pointer outline-none transition-all"
-                  style={{ background: "#F1F5F9", color: "#334155", border: "1px solid #E2E8F0" }}
+                  style={{ background: "var(--nv-muted)", color: "var(--nv-text-2)", border: "1px solid var(--nv-border)" }}
                 >
                   <option value="name">Nombre</option>
                   <option value="date">Fecha</option>
                   <option value="size">Tamaño</option>
                 </select>
-                <span className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#94A3B8" }}>
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--nv-text-4)" }}>
                   <NavIcon id="sort" size={12} />
                 </span>
               </div>
 
               {/* View toggle */}
-              <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid #E2E8F0" }}>
+              <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid var(--nv-border)" }}>
                 {(["grid","list"] as const).map((v) => (
                   <button
                     key={v}
                     onClick={() => setView(v)}
                     className="px-2.5 py-1.5 transition-colors duration-150"
-                    style={{ background: view === v ? "#2E9BFF" : "white", color: view === v ? "white" : "#94A3B8" }}
+                    style={{ background: view === v ? "#2E9BFF" : "var(--nv-surface)", color: view === v ? "white" : "var(--nv-text-4)" }}
                     title={v === "grid" ? "Vista cuadrícula" : "Vista lista"}
                   >
                     {v === "grid" ? (
@@ -1045,9 +1045,9 @@ export default function FileExplorer({ onLogout, onDashboard, onPlans, onPayment
               <button
                 onClick={() => setModal({ tipo: "newFolder" })}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150"
-                style={{ color: "#2E9BFF", border: "1.5px solid #2E9BFF", background: "white" }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "#E0F4FF"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "white"; }}
+                style={{ color: "#2E9BFF", border: "1.5px solid #2E9BFF", background: "var(--nv-surface)" }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--nv-blue-soft)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "var(--nv-surface)"; }}
               >
                 <NavIcon id="folder-plus" size={14} />
                 <span className="hidden sm:inline">Nueva carpeta</span>
@@ -1071,15 +1071,15 @@ export default function FileExplorer({ onLogout, onDashboard, onPlans, onPayment
             {cargando && items.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center">
                 <svg className="animate-spin mb-4" width="28" height="28" viewBox="0 0 16 16" fill="none">
-                  <circle cx="8" cy="8" r="6" stroke="#E2E8F0" strokeWidth="2" />
+                  <circle cx="8" cy="8" r="6" stroke="var(--nv-border)" strokeWidth="2" />
                   <path d="M8 2a6 6 0 0 1 6 6" stroke="#2E9BFF" strokeWidth="2" strokeLinecap="round" />
                 </svg>
-                <p className="text-xs" style={{ color: "#94A3B8" }}>Cargando archivos…</p>
+                <p className="text-xs" style={{ color: "var(--nv-text-4)" }}>Cargando archivos…</p>
               </div>
             ) : errorCarga ? (
               <div className="flex flex-col items-center justify-center py-24 text-center">
                 <p className="text-sm font-semibold mb-1" style={{ color: "#DC2626" }}>No se pudo cargar el contenido</p>
-                <p className="text-xs mb-4" style={{ color: "#94A3B8" }}>{errorCarga}</p>
+                <p className="text-xs mb-4" style={{ color: "var(--nv-text-4)" }}>{errorCarga}</p>
                 <button
                   onClick={recargar}
                   className="px-4 py-2 rounded-lg text-xs font-bold text-white"
@@ -1090,13 +1090,13 @@ export default function FileExplorer({ onLogout, onDashboard, onPlans, onPayment
               </div>
             ) : sorted.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center">
-                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{ background: "#F1F5F9", color: "#CBD5E1" }}>
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{ background: "var(--nv-muted)", color: "var(--nv-border-strong)" }}>
                   <NavIcon id="folder" size={32} />
                 </div>
-                <p className="text-sm font-semibold" style={{ color: "#334155" }}>
+                <p className="text-sm font-semibold" style={{ color: "var(--nv-text-2)" }}>
                   {search ? "Sin resultados" : "Carpeta vacía"}
                 </p>
-                <p className="text-xs mt-1" style={{ color: "#94A3B8" }}>
+                <p className="text-xs mt-1" style={{ color: "var(--nv-text-4)" }}>
                   {search ? `No se encontraron archivos que coincidan con "${search}"` : "Sube archivos o crea una carpeta para empezar."}
                 </p>
               </div>
@@ -1116,14 +1116,14 @@ export default function FileExplorer({ onLogout, onDashboard, onPlans, onPayment
                 ))}
               </div>
             ) : (
-              <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid #E2E8F0", background: "white" }}>
+              <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--nv-border)", background: "var(--nv-surface)" }}>
                 {/* List header */}
                 <div
                   className="grid grid-cols-[auto_auto_1fr_auto_auto_auto] gap-4 px-5 py-3"
-                  style={{ borderBottom: "1px solid #F1F5F9", background: "#F8FAFC" }}
+                  style={{ borderBottom: "1px solid var(--nv-muted)", background: "var(--nv-bg)" }}
                 >
                   {["", "", "Nombre", "Tamaño", "Fecha", ""].map((h, i) => (
-                    <span key={i} className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#CBD5E1" }}>{h}</span>
+                    <span key={i} className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--nv-border-strong)" }}>{h}</span>
                   ))}
                 </div>
                 {sorted.map((item) => (
@@ -1155,7 +1155,7 @@ export default function FileExplorer({ onLogout, onDashboard, onPlans, onPayment
       )}
       {modal?.tipo === "newFolder" && (
         <NameModal
-          titulo="Nueva carpeta" icono="folder-plus" color="#F59E0B" bg="#FFFBEB"
+          titulo="Nueva carpeta" icono="folder-plus" color="#F59E0B" bg="var(--nv-amber-soft)"
           etiqueta="Nombre de la carpeta" placeholder="Nueva carpeta" textoOk="Crear"
           onClose={() => setModal(null)} onSubmit={createFolder}
         />
@@ -1163,7 +1163,7 @@ export default function FileExplorer({ onLogout, onDashboard, onPlans, onPayment
       {modal?.tipo === "rename" && (
         <NameModal
           titulo={modal.item.type === "folder" ? "Renombrar carpeta" : "Renombrar archivo"}
-          icono="edit" color="#2E9BFF" bg="#E0F4FF" etiqueta="Nuevo nombre" inicial={modal.item.name} textoOk="Guardar"
+          icono="edit" color="#2E9BFF" bg="var(--nv-blue-soft)" etiqueta="Nuevo nombre" inicial={modal.item.name} textoOk="Guardar"
           onClose={() => setModal(null)} onSubmit={(nombre) => renombrar(modal.item, nombre)}
         />
       )}
@@ -1185,7 +1185,7 @@ export default function FileExplorer({ onLogout, onDashboard, onPlans, onPayment
       {notification && (
         <div
           className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 px-5 py-3 rounded-xl shadow-xl text-sm font-semibold text-white"
-          style={{ background: notification.tono === "error" ? "#7F1D1D" : "#0F172A", backdropFilter: "blur(10px)", boxShadow: "0 8px 32px rgba(0,0,0,0.24)" }}
+          style={{ background: notification.tono === "error" ? "var(--nv-red-strong)" : "var(--nv-text-1)", backdropFilter: "blur(10px)", boxShadow: "0 8px 32px rgba(0,0,0,0.24)" }}
         >
           {notification.tono === "error" ? (
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">

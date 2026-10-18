@@ -29,18 +29,18 @@ function Semaphore({ color, size = 10 }: { color: string; size?: number }) {
 
 function ComponentCard({ c }: { c: InfraAdmin["componentes"][number] }) {
   const color = COLOR_ESTADO[c.estado];
-  const statusBg: Record<Estado, string> = { operativo: "#DCFCE7", advertencia: "#FEF9C3", error: "#FEE2E2" };
-  const statusColor: Record<Estado, string> = { operativo: "#065F46", advertencia: "#92400E", error: "#991B1B" };
+  const statusBg: Record<Estado, string> = { operativo: "var(--nv-green-soft)", advertencia: "var(--nv-amber-soft)", error: "var(--nv-red-soft)" };
+  const statusColor: Record<Estado, string> = { operativo: "var(--nv-green-strong)", advertencia: "var(--nv-amber-strong)", error: "var(--nv-red-strong)" };
 
   return (
     <div
       className="rounded-2xl p-5 flex flex-col gap-4"
-      style={{ background: "white", border: `1px solid ${c.estado === "operativo" ? "#E2E8F0" : color + "40"}` }}
+      style={{ background: "var(--nv-surface)", border: `1px solid ${c.estado === "operativo" ? "var(--nv-border)" : color + "40"}` }}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2.5">
           <Semaphore color={color} size={11} />
-          <h3 className="text-sm font-extrabold" style={{ color: "#0F172A", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+          <h3 className="text-sm font-extrabold" style={{ color: "var(--nv-text-1)", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             {c.nombre}
           </h3>
         </div>
@@ -53,10 +53,10 @@ function ComponentCard({ c }: { c: InfraAdmin["componentes"][number] }) {
         <p className="text-2xl font-extrabold leading-none" style={{ color, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           {c.metrica}
         </p>
-        <p className="text-[10px] font-semibold mt-0.5" style={{ color: "#94A3B8" }}>{c.metrica_etiqueta}</p>
+        <p className="text-[10px] font-semibold mt-0.5" style={{ color: "var(--nv-text-4)" }}>{c.metrica_etiqueta}</p>
       </div>
 
-      <p className="text-[11px] font-medium break-words" style={{ color: c.estado === "error" ? "#B91C1C" : "#94A3B8" }}>{c.detalle}</p>
+      <p className="text-[11px] font-medium break-words" style={{ color: c.estado === "error" ? "var(--nv-red-strong)" : "var(--nv-text-4)" }}>{c.detalle}</p>
     </div>
   );
 }
@@ -64,8 +64,8 @@ function ComponentCard({ c }: { c: InfraAdmin["componentes"][number] }) {
 const StorageTooltip = ({ active, payload, label }: { active?: boolean; payload?: { payload: { bytes: number } }[]; label?: string }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="px-3 py-2.5 rounded-xl text-xs shadow-xl" style={{ background: "white", border: "1px solid #E2E8F0" }}>
-      <p className="font-bold mb-0.5" style={{ color: "#0F172A" }}>{label}</p>
+    <div className="px-3 py-2.5 rounded-xl text-xs shadow-xl" style={{ background: "var(--nv-surface)", border: "1px solid var(--nv-border)" }}>
+      <p className="font-bold mb-0.5" style={{ color: "var(--nv-text-1)" }}>{label}</p>
       <p style={{ color: "#2E9BFF" }}>
         <span className="font-semibold">Almacenamiento:</span> {formatoBytes(payload[0].payload.bytes)}
       </p>
@@ -113,10 +113,10 @@ export default function AdminInfra({ onNav, onLogout }: AdminInfraProps) {
 
   const a = datos?.actividad;
   const metricas = a ? [
-    { label: "Subidas (24 h)", value: String(a.subidas), sub: `${formatoBytes(a.bytes_subidos)} subidos`, color: "#2E9BFF", bg: "#E0F4FF" },
-    { label: "Descargas (24 h)", value: String(a.descargas), sub: "archivos descargados", color: "#A78BFA", bg: "#F5F3FF" },
-    { label: "Usuarios que entraron hoy", value: String(a.usuarios_con_acceso_hoy), sub: `${a.sesiones_activas} sesiones abiertas`, color: "#00C896", bg: "#DCFCE7" },
-    { label: "Archivos almacenados", value: a.archivos_almacenados.toLocaleString("es-GT"), sub: "en toda la plataforma", color: "#F59E0B", bg: "#FFFBEB" },
+    { label: "Subidas (24 h)", value: String(a.subidas), sub: `${formatoBytes(a.bytes_subidos)} subidos`, color: "#2E9BFF", bg: "var(--nv-blue-soft)" },
+    { label: "Descargas (24 h)", value: String(a.descargas), sub: "archivos descargados", color: "#A78BFA", bg: "var(--nv-violet-soft)" },
+    { label: "Usuarios que entraron hoy", value: String(a.usuarios_con_acceso_hoy), sub: `${a.sesiones_activas} sesiones abiertas`, color: "#00C896", bg: "var(--nv-green-soft)" },
+    { label: "Archivos almacenados", value: a.archivos_almacenados.toLocaleString("es-GT"), sub: "en toda la plataforma", color: "#F59E0B", bg: "var(--nv-amber-soft)" },
   ] : [];
 
   return (
@@ -138,11 +138,11 @@ export default function AdminInfra({ onNav, onLogout }: AdminInfraProps) {
     >
       <div className="max-w-7xl mx-auto flex flex-col gap-6">
         {error && (
-          <p className="text-xs px-4 py-2.5 rounded-xl" style={{ background: "#FEF2F2", color: "#B91C1C" }}>
+          <p className="text-xs px-4 py-2.5 rounded-xl" style={{ background: "var(--nv-red-soft)", color: "var(--nv-red-strong)" }}>
             No se pudo consultar la infraestructura: {error}
           </p>
         )}
-        {!datos && !error && <p className="text-sm text-center py-16" style={{ color: "#94A3B8" }}>Revisando servicios…</p>}
+        {!datos && !error && <p className="text-sm text-center py-16" style={{ color: "var(--nv-text-4)" }}>Revisando servicios…</p>}
 
         {datos && (
           <>
@@ -150,13 +150,13 @@ export default function AdminInfra({ onNav, onLogout }: AdminInfraProps) {
             <div
               className="flex flex-wrap items-center justify-between gap-2 px-5 py-3.5 rounded-2xl"
               style={{
-                background: hayError ? "#FEE2E2" : hayAviso ? "#FEF9C3" : "#DCFCE7",
-                border: `1px solid ${hayError ? "#FECACA" : hayAviso ? "#FDE68A" : "#A7F3D0"}`,
+                background: hayError ? "var(--nv-red-soft)" : hayAviso ? "var(--nv-amber-soft)" : "var(--nv-green-soft)",
+                border: `1px solid ${hayError ? "var(--nv-red-border)" : hayAviso ? "var(--nv-amber-border)" : "var(--nv-green-border)"}`,
               }}
             >
               <div className="flex items-center gap-2.5">
                 <Semaphore color={hayError ? "#FF6B6B" : hayAviso ? "#FBBF24" : "#00C896"} size={10} />
-                <p className="text-sm font-bold" style={{ color: "#0F172A" }}>
+                <p className="text-sm font-bold" style={{ color: "var(--nv-text-1)" }}>
                   {hayError
                     ? "Sistema degradado: hay un servicio que no responde"
                     : hayAviso
@@ -164,7 +164,7 @@ export default function AdminInfra({ onNav, onLogout }: AdminInfraProps) {
                     : "Todos los sistemas operativos"}
                 </p>
               </div>
-              <p className="text-xs" style={{ color: "#64748B" }}>
+              <p className="text-xs" style={{ color: "var(--nv-text-3)" }}>
                 API en línea {haceCuanto(datos.en_linea_desde).replace("hace", "desde hace")} · entorno {datos.entorno}
                 {revisadoEn && ` · revisado ${revisadoEn.toLocaleTimeString("es-GT", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`}
               </p>
@@ -177,13 +177,13 @@ export default function AdminInfra({ onNav, onLogout }: AdminInfraProps) {
 
             {/* Charts row */}
             <div className="grid lg:grid-cols-3 gap-5">
-              <div className="lg:col-span-2 rounded-2xl p-6" style={{ background: "white", border: "1px solid #E2E8F0" }}>
+              <div className="lg:col-span-2 rounded-2xl p-6" style={{ background: "var(--nv-surface)", border: "1px solid var(--nv-border)" }}>
                 <div className="mb-5">
-                  <p className="text-xs font-bold uppercase tracking-widest mb-0.5" style={{ color: "#94A3B8" }}>Últimos 14 días</p>
-                  <h3 className="text-sm font-extrabold" style={{ color: "#0F172A", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                  <p className="text-xs font-bold uppercase tracking-widest mb-0.5" style={{ color: "var(--nv-text-4)" }}>Últimos 14 días</p>
+                  <h3 className="text-sm font-extrabold" style={{ color: "var(--nv-text-1)", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                     Almacenamiento total de la plataforma ({unidad.nombre})
                   </h3>
-                  <p className="text-[11px] mt-0.5" style={{ color: "#94A3B8" }}>
+                  <p className="text-[11px] mt-0.5" style={{ color: "var(--nv-text-4)" }}>
                     {formatoBytes(historial[historial.length - 1]?.bytes ?? 0)} usados de {formatoBytes(datos.cuota_contratada_bytes)} contratados por los clientes
                   </p>
                 </div>
@@ -195,33 +195,33 @@ export default function AdminInfra({ onNav, onLogout }: AdminInfraProps) {
                         <stop offset="100%" stopColor="#00D1C1" />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
-                    <XAxis dataKey="dia" tick={{ fontSize: 9, fill: "#94A3B8" }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 9, fill: "#94A3B8" }} axisLine={false} tickLine={false} />
-                    <Tooltip content={<StorageTooltip />} cursor={{ stroke: "#E2E8F0", strokeWidth: 1 }} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--nv-muted)" vertical={false} />
+                    <XAxis dataKey="dia" tick={{ fontSize: 9, fill: "var(--nv-text-4)" }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 9, fill: "var(--nv-text-4)" }} axisLine={false} tickLine={false} />
+                    <Tooltip content={<StorageTooltip />} cursor={{ stroke: "var(--nv-border)", strokeWidth: 1 }} />
                     <Line
                       type="monotone"
                       dataKey="valor"
                       stroke="url(#storageGrad)"
                       strokeWidth={2.5}
-                      dot={{ r: 3.5, fill: "#2E9BFF", stroke: "white", strokeWidth: 2 }}
-                      activeDot={{ r: 5, fill: "#2E9BFF", stroke: "white", strokeWidth: 2 }}
+                      dot={{ r: 3.5, fill: "#2E9BFF", stroke: "var(--nv-surface)", strokeWidth: 2 }}
+                      activeDot={{ r: 5, fill: "#2E9BFF", stroke: "var(--nv-surface)", strokeWidth: 2 }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
 
               {/* Alerts card */}
-              <div className="rounded-2xl flex flex-col overflow-hidden" style={{ background: "white", border: "1px solid #E2E8F0" }}>
-                <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid #F1F5F9" }}>
+              <div className="rounded-2xl flex flex-col overflow-hidden" style={{ background: "var(--nv-surface)", border: "1px solid var(--nv-border)" }}>
+                <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--nv-muted)" }}>
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-widest mb-0.5" style={{ color: "#94A3B8" }}>Ahora mismo</p>
-                    <h3 className="text-sm font-extrabold" style={{ color: "#0F172A", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Alertas</h3>
+                    <p className="text-xs font-bold uppercase tracking-widest mb-0.5" style={{ color: "var(--nv-text-4)" }}>Ahora mismo</p>
+                    <h3 className="text-sm font-extrabold" style={{ color: "var(--nv-text-1)", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Alertas</h3>
                   </div>
                   <div
                     className="w-10 h-10 rounded-xl flex items-center justify-center text-lg font-extrabold"
                     style={{
-                      background: alertas.length ? "#FEE2E2" : "#DCFCE7",
+                      background: alertas.length ? "var(--nv-red-soft)" : "var(--nv-green-soft)",
                       color: alertas.length ? "#FF6B6B" : "#00C896",
                       fontFamily: "'Plus Jakarta Sans', sans-serif",
                     }}
@@ -230,11 +230,11 @@ export default function AdminInfra({ onNav, onLogout }: AdminInfraProps) {
                   </div>
                 </div>
 
-                <div className="flex-1 flex flex-col divide-y" style={{ borderColor: "#F8FAFC" }}>
+                <div className="flex-1 flex flex-col divide-y" style={{ borderColor: "var(--nv-bg)" }}>
                   {alertas.length === 0 && (
                     <div className="px-5 py-8 flex flex-col items-center gap-2 text-center">
                       <span style={{ color: "#00C896" }}><AdminIcon id="check" size={22} /></span>
-                      <p className="text-xs" style={{ color: "#64748B" }}>Sin alertas: servicios respondiendo y ningún cliente cerca de su límite.</p>
+                      <p className="text-xs" style={{ color: "var(--nv-text-3)" }}>Sin alertas: servicios respondiendo y ningún cliente cerca de su límite.</p>
                     </div>
                   )}
                   {alertas.map((al, i) => {
@@ -243,12 +243,12 @@ export default function AdminInfra({ onNav, onLogout }: AdminInfraProps) {
                       <div key={i} className="px-5 py-3.5 flex items-start gap-2">
                         <span className="mt-1"><Semaphore color={color} size={8} /></span>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold leading-snug break-words" style={{ color: "#0F172A" }}>{al.titulo}</p>
+                          <p className="text-xs font-semibold leading-snug break-words" style={{ color: "var(--nv-text-1)" }}>{al.titulo}</p>
                           <div className="flex items-center gap-2 mt-1">
                             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full capitalize" style={{ background: color + "18", color }}>
                               {al.severidad}
                             </span>
-                            <span className="text-[10px]" style={{ color: "#94A3B8" }}>{al.componente}</span>
+                            <span className="text-[10px]" style={{ color: "var(--nv-text-4)" }}>{al.componente}</span>
                           </div>
                         </div>
                       </div>
@@ -261,15 +261,15 @@ export default function AdminInfra({ onNav, onLogout }: AdminInfraProps) {
             {/* Metrics summary row */}
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {metricas.map(({ label, value, sub, color, bg }) => (
-                <div key={label} className="rounded-2xl p-5" style={{ background: "white", border: "1px solid #E2E8F0" }}>
+                <div key={label} className="rounded-2xl p-5" style={{ background: "var(--nv-surface)", border: "1px solid var(--nv-border)" }}>
                   <div className="w-8 h-8 rounded-xl flex items-center justify-center mb-3" style={{ background: bg, color }}>
                     <AdminIcon id="server" size={16} />
                   </div>
                   <p className="text-xl font-extrabold leading-none mb-1" style={{ color, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                     {value}
                   </p>
-                  <p className="text-xs font-semibold" style={{ color: "#64748B" }}>{label}</p>
-                  <p className="text-[10px] mt-0.5" style={{ color: "#94A3B8" }}>{sub}</p>
+                  <p className="text-xs font-semibold" style={{ color: "var(--nv-text-3)" }}>{label}</p>
+                  <p className="text-[10px] mt-0.5" style={{ color: "var(--nv-text-4)" }}>{sub}</p>
                 </div>
               ))}
             </div>

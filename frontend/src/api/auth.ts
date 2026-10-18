@@ -26,3 +26,23 @@ export const authApi = {
 
   me: () => api<Usuario>("/auth/me"),
 };
+
+export interface SesionAbierta {
+  id_sesion: string;
+  ip: string | null;
+  user_agent: string | null;
+  creado_en: string;
+  expira_en: string;
+  actual: boolean;
+}
+
+/** Configuración de la cuenta (pantalla /configuracion). */
+export const cuentaApi = {
+  actualizarPerfil: (nombre: string) => api<Usuario>("/auth/me", { method: "PATCH", body: { nombre } }),
+  cambiarContrasena: (actual: string, nueva: string) =>
+    api<Mensaje>("/auth/cambiar-contrasena", { method: "POST", body: { actual, nueva } }),
+  sesiones: () => api<SesionAbierta[]>("/auth/sesiones"),
+  cerrarSesion: (id: string) => api<Mensaje>(`/auth/sesiones/${id}`, { method: "DELETE" }),
+  cerrarOtras: () => api<Mensaje>("/auth/sesiones/cerrar-otras", { method: "POST" }),
+  eliminarCuenta: (password: string) => api<void>("/auth/me", { method: "DELETE", body: { password } }),
+};

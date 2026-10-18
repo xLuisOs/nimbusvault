@@ -12,17 +12,17 @@ const PAGE_SIZE = 8;
 
 const ROL_TEXTO: Record<Rol, string> = { CLIENTE: "Cliente", ADMINISTRADOR: "Admin", SOPORTE: "Soporte" };
 const ROL_STYLE: Record<Rol, { bg: string; color: string }> = {
-  CLIENTE:       { bg: "#E0F4FF", color: "#1E6BD6" },
+  CLIENTE:       { bg: "var(--nv-blue-soft)", color: "#1E6BD6" },
   ADMINISTRADOR: { bg: "#062D5B", color: "white"   },
-  SOPORTE:       { bg: "#E0F4FF", color: "#0EA5E9" },
+  SOPORTE:       { bg: "var(--nv-blue-soft)", color: "#0EA5E9" },
 };
 const ESTADO_STYLE: Record<UsuarioAdmin["estado"], { texto: string; bg: string; color: string }> = {
-  activo:     { texto: "Activo",     bg: "#DCFCE7", color: "#00C896" },
-  suspendido: { texto: "Suspendido", bg: "#FEE2E2", color: "#FF6B6B" },
-  pendiente:  { texto: "Pendiente",  bg: "#FEF3C7", color: "#B45309" },
+  activo:     { texto: "Activo",     bg: "var(--nv-green-soft)", color: "#00C896" },
+  suspendido: { texto: "Suspendido", bg: "var(--nv-red-soft)", color: "#FF6B6B" },
+  pendiente:  { texto: "Pendiente",  bg: "var(--nv-amber-soft)", color: "var(--nv-amber-strong)" },
 };
 const PLAN_COLOR: Record<string, string> = {
-  Gratis: "#64748B", Personal: "#4DB8FF", Pro: "#2E9BFF", Business: "#00D1C1",
+  Gratis: "var(--nv-text-3)", Personal: "#4DB8FF", Pro: "#2E9BFF", Business: "#00D1C1",
 };
 
 // ── Badges ─────────────────────────────────────────────────────────────────────
@@ -50,8 +50,8 @@ function StatusBadge({ estado }: { estado: UsuarioAdmin["estado"] }) {
 }
 
 function PlanBadge({ plan }: { plan: string | null }) {
-  if (!plan) return <span className="text-[11px]" style={{ color: "#CBD5E1" }}>—</span>;
-  const color = PLAN_COLOR[plan] ?? "#64748B";
+  if (!plan) return <span className="text-[11px]" style={{ color: "var(--nv-border-strong)" }}>—</span>;
+  const color = PLAN_COLOR[plan] ?? "var(--nv-text-3)";
   return (
     <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ background: color + "18", color }}>
       {plan}
@@ -71,9 +71,9 @@ function Select({ value, onChange, options, placeholder }: {
       onChange={(e) => onChange(e.target.value)}
       className="text-sm px-3 py-2 rounded-xl outline-none transition-all duration-150"
       style={{
-        background: "white",
-        border: "1.5px solid #E2E8F0",
-        color: value ? "#0F172A" : "#94A3B8",
+        background: "var(--nv-surface)",
+        border: "1.5px solid var(--nv-border)",
+        color: value ? "var(--nv-text-1)" : "var(--nv-text-4)",
         appearance: "none",
         paddingRight: "32px",
         backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' stroke='%2394A3B8' strokeWidth='1.4' strokeLinecap='round' fill='none'/%3E%3C/svg%3E")`,
@@ -98,11 +98,11 @@ function Modal({ titulo, onClose, children }: { titulo: string; onClose: () => v
       style={{ background: "rgba(15,23,42,0.45)", backdropFilter: "blur(4px)" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="w-full max-w-md rounded-2xl overflow-hidden" style={{ background: "white", boxShadow: "0 20px 60px rgba(0,0,0,0.18)" }}>
-        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid #F1F5F9" }}>
-          <h3 className="font-extrabold" style={{ color: "#0F172A", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{titulo}</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg" style={{ color: "#94A3B8" }} aria-label="Cerrar"
-            onMouseEnter={(e) => { e.currentTarget.style.background = "#F1F5F9"; }}
+      <div className="w-full max-w-md rounded-2xl overflow-hidden" style={{ background: "var(--nv-surface)", boxShadow: "0 20px 60px rgba(0,0,0,0.18)" }}>
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid var(--nv-muted)" }}>
+          <h3 className="font-extrabold" style={{ color: "var(--nv-text-1)", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{titulo}</h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg" style={{ color: "var(--nv-text-4)" }} aria-label="Cerrar"
+            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--nv-muted)"; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
             <AdminIcon id="x" size={18} />
           </button>
@@ -116,18 +116,18 @@ function Modal({ titulo, onClose, children }: { titulo: string; onClose: () => v
 function Campo({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-sm font-semibold" style={{ color: "#334155" }}>{label}</label>
+      <label className="text-sm font-semibold" style={{ color: "var(--nv-text-2)" }}>{label}</label>
       {children}
     </div>
   );
 }
 
-const inputStyle = { border: "1.5px solid #E2E8F0", color: "#0F172A" };
+const inputStyle = { border: "1.5px solid var(--nv-border)", color: "var(--nv-text-1)" };
 
 function Botones({ cargando, texto, onCancel, peligro = false }: { cargando: boolean; texto: string; onCancel: () => void; peligro?: boolean }) {
   return (
     <div className="flex gap-3 mt-2">
-      <button type="button" onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ background: "#F1F5F9", color: "#64748B" }}>
+      <button type="button" onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ background: "var(--nv-muted)", color: "var(--nv-text-3)" }}>
         Cancelar
       </button>
       <button
@@ -164,7 +164,7 @@ function InvitarModal({ onClose, onListo }: { onClose: () => void; onListo: (u: 
   return (
     <Modal titulo="Nuevo usuario" onClose={onClose}>
       <form className="p-6 flex flex-col gap-4" onSubmit={enviar}>
-        <p className="text-xs" style={{ color: "#64748B" }}>
+        <p className="text-xs" style={{ color: "var(--nv-text-3)" }}>
           Le enviaremos un correo para que elija su contraseña. Los clientes empiezan en el plan Gratis.
         </p>
         <Campo label="Nombre completo">
@@ -210,7 +210,7 @@ function EditarModal({ usuario, onClose, onListo }: { usuario: UsuarioAdmin; onC
   return (
     <Modal titulo="Editar usuario" onClose={onClose}>
       <form className="p-6 flex flex-col gap-4" onSubmit={enviar}>
-        <p className="text-xs" style={{ color: "#64748B" }}>{usuario.correo}</p>
+        <p className="text-xs" style={{ color: "var(--nv-text-3)" }}>{usuario.correo}</p>
         <Campo label="Nombre completo">
           <input required minLength={2} value={nombre} onChange={(e) => setNombre(e.target.value)}
             className="px-4 py-2.5 rounded-xl text-sm outline-none" style={inputStyle} />
@@ -219,7 +219,7 @@ function EditarModal({ usuario, onClose, onListo }: { usuario: UsuarioAdmin; onC
           <Select value={rol} onChange={(v) => setRol(v as Rol)} options={OPCIONES_ROL} />
         </Campo>
         {rol !== usuario.rol && (
-          <p className="text-xs" style={{ color: "#B45309" }}>Al cambiar el rol se cierran sus sesiones abiertas.</p>
+          <p className="text-xs" style={{ color: "var(--nv-amber-strong)" }}>Al cambiar el rol se cierran sus sesiones abiertas.</p>
         )}
         {error && <p className="text-xs font-semibold" style={{ color: "#DC2626" }}>{error}</p>}
         <Botones cargando={cargando} texto="Guardar cambios" onCancel={onClose} />
@@ -248,10 +248,10 @@ function EliminarModal({ usuario, onClose, onListo }: { usuario: UsuarioAdmin; o
   return (
     <Modal titulo="Eliminar usuario" onClose={onClose}>
       <form className="p-6 flex flex-col gap-4" onSubmit={enviar}>
-        <p className="text-sm" style={{ color: "#334155" }}>
+        <p className="text-sm" style={{ color: "var(--nv-text-2)" }}>
           ¿Eliminar a <strong>{usuario.nombre}</strong> ({usuario.correo})?
         </p>
-        <p className="text-xs rounded-xl px-3 py-2.5" style={{ background: "#FEF2F2", color: "#B91C1C" }}>
+        <p className="text-xs rounded-xl px-3 py-2.5" style={{ background: "var(--nv-red-soft)", color: "var(--nv-red-strong)" }}>
           Se borran su cuenta, sus {formatoBytes(usuario.almacenamiento_usado_bytes)} de archivos (también del almacenamiento),
           sus suscripciones y su historial de pagos. No se puede deshacer.
         </p>
@@ -348,13 +348,13 @@ export default function AdminUsers({ onNav, onLogout }: AdminUsersProps) {
         {notif && (
           <div className="px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2"
             style={notif.error
-              ? { background: "#FEE2E2", color: "#991B1B", border: "1px solid #FECACA" }
-              : { background: "#DCFCE7", color: "#065F46", border: "1px solid #A7F3D0" }}>
+              ? { background: "var(--nv-red-soft)", color: "var(--nv-red-strong)", border: "1px solid var(--nv-red-border)" }
+              : { background: "var(--nv-green-soft)", color: "var(--nv-green-strong)", border: "1px solid var(--nv-green-border)" }}>
             <AdminIcon id={notif.error ? "x" : "check"} size={16} />{notif.texto}
           </div>
         )}
         {errorCarga && (
-          <p className="text-xs px-4 py-2.5 rounded-xl" style={{ background: "#FEF2F2", color: "#B91C1C" }}>
+          <p className="text-xs px-4 py-2.5 rounded-xl" style={{ background: "var(--nv-red-soft)", color: "var(--nv-red-strong)" }}>
             No se pudieron cargar los usuarios: {errorCarga}
           </p>
         )}
@@ -362,10 +362,10 @@ export default function AdminUsers({ onNav, onLogout }: AdminUsersProps) {
         {/* Filters */}
         <div
           className="flex flex-wrap items-center gap-3 p-4 rounded-2xl"
-          style={{ background: "white", border: "1px solid #E2E8F0" }}
+          style={{ background: "var(--nv-surface)", border: "1px solid var(--nv-border)" }}
         >
           <div className="relative flex-1 min-w-48">
-            <div className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "#94A3B8" }}>
+            <div className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--nv-text-4)" }}>
               <AdminIcon id="search" size={16} />
             </div>
             <input
@@ -374,9 +374,9 @@ export default function AdminUsers({ onNav, onLogout }: AdminUsersProps) {
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               className="w-full pl-9 pr-4 py-2 text-sm rounded-xl outline-none transition-all"
-              style={{ background: "#F8FAFC", border: "1.5px solid #E2E8F0", color: "#0F172A" }}
+              style={{ background: "var(--nv-bg)", border: "1.5px solid var(--nv-border)", color: "var(--nv-text-1)" }}
               onFocus={(e) => (e.target.style.borderColor = "#2E9BFF")}
-              onBlur={(e) => (e.target.style.borderColor = "#E2E8F0")}
+              onBlur={(e) => (e.target.style.borderColor = "var(--nv-border)")}
             />
           </div>
 
@@ -392,27 +392,27 @@ export default function AdminUsers({ onNav, onLogout }: AdminUsersProps) {
             <button
               onClick={() => { setSearch(""); setRoleF(""); setStatusF(""); setPage(1); }}
               className="text-xs font-semibold px-3 py-2 rounded-xl transition-colors"
-              style={{ color: "#94A3B8", background: "#F1F5F9" }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = "#FF6B6B"; e.currentTarget.style.background = "#FEE2E2"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = "#94A3B8"; e.currentTarget.style.background = "#F1F5F9"; }}
+              style={{ color: "var(--nv-text-4)", background: "var(--nv-muted)" }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = "#FF6B6B"; e.currentTarget.style.background = "var(--nv-red-soft)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = "var(--nv-text-4)"; e.currentTarget.style.background = "var(--nv-muted)"; }}
             >
               Limpiar filtros
             </button>
           )}
 
-          <div className="ml-auto text-xs" style={{ color: "#94A3B8" }}>
+          <div className="ml-auto text-xs" style={{ color: "var(--nv-text-4)" }}>
             {filtered.length} usuario{filtered.length !== 1 ? "s" : ""}
           </div>
         </div>
 
         {/* Table */}
-        <div className="rounded-2xl overflow-hidden" style={{ background: "white", border: "1px solid #E2E8F0" }}>
+        <div className="rounded-2xl overflow-hidden" style={{ background: "var(--nv-surface)", border: "1px solid var(--nv-border)" }}>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr style={{ borderBottom: "1px solid #F1F5F9" }}>
+                <tr style={{ borderBottom: "1px solid var(--nv-muted)" }}>
                   {["Usuario", "Rol", "Plan", "Almacenamiento", "Estado", "Alta", "Acciones"].map((h) => (
-                    <th key={h} className="text-left px-5 py-3 text-[10px] font-bold uppercase tracking-widest" style={{ color: "#94A3B8" }}>
+                    <th key={h} className="text-left px-5 py-3 text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--nv-text-4)" }}>
                       {h}
                     </th>
                   ))}
@@ -420,10 +420,10 @@ export default function AdminUsers({ onNav, onLogout }: AdminUsersProps) {
               </thead>
               <tbody>
                 {usuarios === null && !errorCarga ? (
-                  <tr><td colSpan={7} className="text-center py-12 text-sm" style={{ color: "#94A3B8" }}>Cargando usuarios…</td></tr>
+                  <tr><td colSpan={7} className="text-center py-12 text-sm" style={{ color: "var(--nv-text-4)" }}>Cargando usuarios…</td></tr>
                 ) : pageRows.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-12 text-sm" style={{ color: "#94A3B8" }}>
+                    <td colSpan={7} className="text-center py-12 text-sm" style={{ color: "var(--nv-text-4)" }}>
                       No se encontraron usuarios con esos filtros.
                     </td>
                   </tr>
@@ -433,8 +433,8 @@ export default function AdminUsers({ onNav, onLogout }: AdminUsersProps) {
                   return (
                     <tr
                       key={u.id_usuario}
-                      style={{ borderBottom: i < pageRows.length - 1 ? "1px solid #F8FAFC" : "none" }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = "#F8FAFC")}
+                      style={{ borderBottom: i < pageRows.length - 1 ? "1px solid var(--nv-bg)" : "none" }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "var(--nv-bg)")}
                       onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                     >
                       <td className="px-5 py-3.5">
@@ -446,10 +446,10 @@ export default function AdminUsers({ onNav, onLogout }: AdminUsersProps) {
                             {iniciales(u.nombre)}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-xs font-semibold whitespace-nowrap" style={{ color: "#0F172A" }}>
-                              {u.nombre}{soyYo && <span style={{ color: "#94A3B8" }}> (tú)</span>}
+                            <p className="text-xs font-semibold whitespace-nowrap" style={{ color: "var(--nv-text-1)" }}>
+                              {u.nombre}{soyYo && <span style={{ color: "var(--nv-text-4)" }}> (tú)</span>}
                             </p>
-                            <p className="text-[11px] whitespace-nowrap" style={{ color: "#64748B" }}>{u.correo}</p>
+                            <p className="text-[11px] whitespace-nowrap" style={{ color: "var(--nv-text-3)" }}>{u.correo}</p>
                           </div>
                         </div>
                       </td>
@@ -458,19 +458,19 @@ export default function AdminUsers({ onNav, onLogout }: AdminUsersProps) {
                       <td className="px-5 py-3.5">
                         {u.cuota_bytes ? (
                           <div className="min-w-24">
-                            <p className="text-xs font-semibold" style={{ color: "#334155" }}>{formatoBytes(u.almacenamiento_usado_bytes)}</p>
-                            <div className="h-1 rounded-full mt-1" style={{ background: "#F1F5F9" }}>
+                            <p className="text-xs font-semibold" style={{ color: "var(--nv-text-2)" }}>{formatoBytes(u.almacenamiento_usado_bytes)}</p>
+                            <div className="h-1 rounded-full mt-1" style={{ background: "var(--nv-muted)" }}>
                               <div className="h-1 rounded-full" style={{ width: `${Math.max(pctUso, u.almacenamiento_usado_bytes ? 2 : 0)}%`, background: pctUso >= 90 ? "#F59E0B" : "#2E9BFF" }} />
                             </div>
                           </div>
                         ) : (
-                          <span className="text-[11px]" style={{ color: "#CBD5E1" }}>—</span>
+                          <span className="text-[11px]" style={{ color: "var(--nv-border-strong)" }}>—</span>
                         )}
                       </td>
                       <td className="px-5 py-3.5"><StatusBadge estado={u.estado} /></td>
                       <td className="px-5 py-3.5 whitespace-nowrap">
-                        <p className="text-xs" style={{ color: "#64748B" }}>{formatoFecha(u.creado_en)}</p>
-                        <p className="text-[10px]" style={{ color: "#94A3B8" }}>
+                        <p className="text-xs" style={{ color: "var(--nv-text-3)" }}>{formatoFecha(u.creado_en)}</p>
+                        <p className="text-[10px]" style={{ color: "var(--nv-text-4)" }}>
                           {u.ultimo_acceso ? `Último acceso ${haceCuanto(u.ultimo_acceso)}` : "Nunca ha entrado"}
                         </p>
                       </td>
@@ -480,10 +480,10 @@ export default function AdminUsers({ onNav, onLogout }: AdminUsersProps) {
                             onClick={() => setModal({ tipo: "editar", usuario: u })}
                             disabled={soyYo}
                             className="p-1.5 rounded-lg transition-colors disabled:cursor-not-allowed"
-                            style={{ color: "#94A3B8" }}
+                            style={{ color: "var(--nv-text-4)" }}
                             title={soyYo ? "No puedes editarte a ti mismo" : "Editar nombre o rol"}
-                            onMouseEnter={(e) => { if (!soyYo) { e.currentTarget.style.background = "#E0F4FF"; e.currentTarget.style.color = "#2E9BFF"; } }}
-                            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#94A3B8"; }}
+                            onMouseEnter={(e) => { if (!soyYo) { e.currentTarget.style.background = "var(--nv-blue-soft)"; e.currentTarget.style.color = "#2E9BFF"; } }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--nv-text-4)"; }}
                           >
                             <AdminIcon id="edit" size={15} />
                           </button>
@@ -491,10 +491,10 @@ export default function AdminUsers({ onNav, onLogout }: AdminUsersProps) {
                             onClick={() => alternarEstado(u)}
                             disabled={soyYo || u.estado === "pendiente"}
                             className="p-1.5 rounded-lg transition-colors disabled:cursor-not-allowed"
-                            style={{ color: u.estado === "suspendido" ? "#FF6B6B" : "#94A3B8", opacity: u.estado === "pendiente" ? 0.35 : 1 }}
+                            style={{ color: u.estado === "suspendido" ? "#FF6B6B" : "var(--nv-text-4)", opacity: u.estado === "pendiente" ? 0.35 : 1 }}
                             title={u.estado === "pendiente" ? "Aún no confirma su correo" : u.estado === "activo" ? "Suspender" : "Reactivar"}
-                            onMouseEnter={(e) => { if (!soyYo) { e.currentTarget.style.background = "#FFF8E1"; e.currentTarget.style.color = "#F59E0B"; } }}
-                            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = u.estado === "suspendido" ? "#FF6B6B" : "#94A3B8"; }}
+                            onMouseEnter={(e) => { if (!soyYo) { e.currentTarget.style.background = "var(--nv-amber-soft)"; e.currentTarget.style.color = "#F59E0B"; } }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = u.estado === "suspendido" ? "#FF6B6B" : "var(--nv-text-4)"; }}
                           >
                             <AdminIcon id="toggle" size={15} />
                           </button>
@@ -502,10 +502,10 @@ export default function AdminUsers({ onNav, onLogout }: AdminUsersProps) {
                             onClick={() => setModal({ tipo: "eliminar", usuario: u })}
                             disabled={soyYo}
                             className="p-1.5 rounded-lg transition-colors disabled:cursor-not-allowed"
-                            style={{ color: "#94A3B8" }}
+                            style={{ color: "var(--nv-text-4)" }}
                             title={soyYo ? "No puedes eliminarte a ti mismo" : "Eliminar"}
-                            onMouseEnter={(e) => { if (!soyYo) { e.currentTarget.style.background = "#FEE2E2"; e.currentTarget.style.color = "#FF6B6B"; } }}
-                            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#94A3B8"; }}
+                            onMouseEnter={(e) => { if (!soyYo) { e.currentTarget.style.background = "var(--nv-red-soft)"; e.currentTarget.style.color = "#FF6B6B"; } }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--nv-text-4)"; }}
                           >
                             <AdminIcon id="trash" size={15} />
                           </button>
@@ -520,8 +520,8 @@ export default function AdminUsers({ onNav, onLogout }: AdminUsersProps) {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between px-5 py-3" style={{ borderTop: "1px solid #F1F5F9" }}>
-              <p className="text-xs" style={{ color: "#94A3B8" }}>
+            <div className="flex items-center justify-between px-5 py-3" style={{ borderTop: "1px solid var(--nv-muted)" }}>
+              <p className="text-xs" style={{ color: "var(--nv-text-4)" }}>
                 Mostrando {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} de {filtered.length}
               </p>
               <div className="flex items-center gap-1">
@@ -530,7 +530,7 @@ export default function AdminUsers({ onNav, onLogout }: AdminUsersProps) {
                     key={p}
                     onClick={() => setPage(p)}
                     className="w-7 h-7 rounded-lg text-xs font-semibold transition-all"
-                    style={{ background: p === page ? "#2E9BFF" : "#F1F5F9", color: p === page ? "white" : "#64748B" }}
+                    style={{ background: p === page ? "#2E9BFF" : "var(--nv-muted)", color: p === page ? "white" : "var(--nv-text-3)" }}
                   >
                     {p}
                   </button>
