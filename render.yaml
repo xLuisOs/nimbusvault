@@ -58,6 +58,7 @@ services:
     dockerContext: ./frontend
     dockerfilePath: ./frontend/Dockerfile
     envVars:
-      # nginx reenvía /api a la API, así navegador, front y API comparten dominio
+      # nginx reenvía /api a la API, así navegador, front y API comparten dominio.
+      # Ojo: el nombre "nimbusvault-api" ya estaba ocupado en Render, por eso la URL lleva sufijo.
       - key: API_UPSTREAM
-        value: https://nimbusvault-api.onrender.com
+        value: https://nimbusvault-api-7b7k.onrender.com
