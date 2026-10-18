@@ -37,7 +37,7 @@ const MARCAS: Record<string, { label: string; color: string }> = {
   visa:       { label: "Visa",       color: "#1A1F71" },
   mastercard: { label: "Mastercard", color: "#EB001B" },
   amex:       { label: "Amex",       color: "#007BC1" },
-  otra:       { label: "Tarjeta",    color: "#64748B" },
+  otra:       { label: "Tarjeta",    color: "var(--nv-text-3)" },
 };
 
 function aVista(p: Pago): Payment {
@@ -60,7 +60,7 @@ function aVista(p: Pago): Payment {
 
 const STATUS_STYLE: Record<PayStatus, { bg: string; text: string; dot: string; label: string }> = {
   pagado:    { bg: "rgba(0,200,150,0.10)",  text: "#009971", dot: "#00C896", label: "Pagado"    },
-  pendiente: { bg: "rgba(251,191,36,0.12)", text: "#B45309", dot: "#FBBF24", label: "Pendiente" },
+  pendiente: { bg: "rgba(251,191,36,0.12)", text: "var(--nv-amber-strong)", dot: "#FBBF24", label: "Pendiente" },
   fallido:   { bg: "rgba(255,107,107,0.12)",text: "#DC2626", dot: "#FF6B6B", label: "Fallido"   },
 };
 
@@ -87,17 +87,17 @@ function SummaryCards({ payments }: { payments: Payment[] }) {
   const sus       = usuario?.suscripcion;
 
   const cards = [
-    { label: "Total pagado",      value: formatoDolares(total.toFixed(2)), sub: "historial completo",     color: "#00C896", bg: "#F0FDF9" },
-    { label: "Pagos pendientes",  value: String(pending),              sub: pending ? "requieren atención" : "todo al día", color: pending ? "#B45309" : "#00C896", bg: pending ? "#FFFBEB" : "#F0FDF9" },
-    { label: "Pagos fallidos",    value: String(failed),               sub: failed  ? "revisar método de pago" : "sin problemas",  color: failed  ? "#DC2626" : "#00C896", bg: failed  ? "#FEF2F2" : "#F0FDF9" },
-    { label: "Plan actual",       value: sus?.plan_nombre ?? "—",      sub: sus ? `vigente hasta el ${formatoFecha(sus.fecha_fin)}` : "sin plan activo", color: "#2E9BFF", bg: "#E0F4FF" },
+    { label: "Total pagado",      value: formatoDolares(total.toFixed(2)), sub: "historial completo",     color: "#00C896", bg: "var(--nv-green-soft)" },
+    { label: "Pagos pendientes",  value: String(pending),              sub: pending ? "requieren atención" : "todo al día", color: pending ? "var(--nv-amber-strong)" : "#00C896", bg: pending ? "var(--nv-amber-soft)" : "var(--nv-green-soft)" },
+    { label: "Pagos fallidos",    value: String(failed),               sub: failed  ? "revisar método de pago" : "sin problemas",  color: failed  ? "#DC2626" : "#00C896", bg: failed  ? "var(--nv-red-soft)" : "var(--nv-green-soft)" },
+    { label: "Plan actual",       value: sus?.plan_nombre ?? "—",      sub: sus ? `vigente hasta el ${formatoFecha(sus.fecha_fin)}` : "sin plan activo", color: "#2E9BFF", bg: "var(--nv-blue-soft)" },
   ];
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       {cards.map(({ label, value, sub, color }) => (
-        <div key={label} className="rounded-2xl p-5" style={{ background: "white", border: "1px solid #E2E8F0" }}>
-          <p className="text-xs font-semibold mb-2 uppercase tracking-widest" style={{ color: "#94A3B8" }}>{label}</p>
+        <div key={label} className="rounded-2xl p-5" style={{ background: "var(--nv-surface)", border: "1px solid var(--nv-border)" }}>
+          <p className="text-xs font-semibold mb-2 uppercase tracking-widest" style={{ color: "var(--nv-text-4)" }}>{label}</p>
           <p
             className="text-2xl font-extrabold mb-0.5"
             style={{ color, fontFamily: "'Plus Jakarta Sans', sans-serif" }}
@@ -106,7 +106,7 @@ function SummaryCards({ payments }: { payments: Payment[] }) {
           </p>
           <div className="flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full" style={{ background: color }} />
-            <p className="text-xs" style={{ color: "#94A3B8" }}>{sub}</p>
+            <p className="text-xs" style={{ color: "var(--nv-text-4)" }}>{sub}</p>
           </div>
         </div>
       ))}
@@ -117,9 +117,9 @@ function SummaryCards({ payments }: { payments: Payment[] }) {
 // ── Filter bar ────────────────────────────────────────────────────────────────
 
 const SELECT_STYLE: React.CSSProperties = {
-  background: "white",
-  border: "1px solid #E2E8F0",
-  color: "#334155",
+  background: "var(--nv-surface)",
+  border: "1px solid var(--nv-border)",
+  color: "var(--nv-text-2)",
   borderRadius: "10px",
   padding: "8px 32px 8px 12px",
   fontSize: "13px",
@@ -156,7 +156,7 @@ function FilterBar({ status, plan, period, planOptions, onStatus, onPlan, onPeri
             <option value="pendiente">Pendiente</option>
             <option value="fallido">Fallido</option>
           </select>
-          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#94A3B8" }}>
+          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--nv-text-4)" }}>
             <NavIcon id="sort" size={12} />
           </span>
         </div>
@@ -169,7 +169,7 @@ function FilterBar({ status, plan, period, planOptions, onStatus, onPlan, onPeri
               <option key={nombre} value={nombre}>{nombre}</option>
             ))}
           </select>
-          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#94A3B8" }}>
+          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--nv-text-4)" }}>
             <NavIcon id="sort" size={12} />
           </span>
         </div>
@@ -182,7 +182,7 @@ function FilterBar({ status, plan, period, planOptions, onStatus, onPlan, onPeri
             <option value="6m">Últimos 6 meses</option>
             <option value="1y">Último año</option>
           </select>
-          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#94A3B8" }}>
+          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--nv-text-4)" }}>
             <NavIcon id="sort" size={12} />
           </span>
         </div>
@@ -191,9 +191,9 @@ function FilterBar({ status, plan, period, planOptions, onStatus, onPlan, onPeri
           <button
             onClick={onReset}
             className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg transition-colors"
-            style={{ color: "#94A3B8", background: "#F1F5F9" }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "#E2E8F0"; e.currentTarget.style.color = "#334155"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "#F1F5F9"; e.currentTarget.style.color = "#94A3B8"; }}
+            style={{ color: "var(--nv-text-4)", background: "var(--nv-muted)" }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--nv-border)"; e.currentTarget.style.color = "var(--nv-text-2)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "var(--nv-muted)"; e.currentTarget.style.color = "var(--nv-text-4)"; }}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
@@ -203,10 +203,10 @@ function FilterBar({ status, plan, period, planOptions, onStatus, onPlan, onPeri
         )}
       </div>
 
-      <p className="text-xs" style={{ color: "#94A3B8" }}>
+      <p className="text-xs" style={{ color: "var(--nv-text-4)" }}>
         {filtered === total
           ? `${total} registros`
-          : <><span className="font-semibold" style={{ color: "#334155" }}>{filtered}</span> de {total} registros</>}
+          : <><span className="font-semibold" style={{ color: "var(--nv-text-2)" }}>{filtered}</span> de {total} registros</>}
       </p>
     </div>
   );
@@ -237,15 +237,15 @@ function PaymentRow({ payment, idx }: { payment: Payment; idx: number }) {
   return (
     <tr
       className="group transition-colors duration-100"
-      style={{ background: idx % 2 === 0 ? "white" : "#FAFBFC" }}
-      onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = "#F0F9FF"; }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = idx % 2 === 0 ? "white" : "#FAFBFC"; }}
+      style={{ background: idx % 2 === 0 ? "var(--nv-surface)" : "var(--nv-bg)" }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = "var(--nv-bg)"; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = idx % 2 === 0 ? "var(--nv-surface)" : "var(--nv-bg)"; }}
     >
       {/* Fecha */}
       <td className="px-5 py-4">
         <div>
-          <p className="text-sm font-medium" style={{ color: "#0F172A" }}>{payment.dateLabel}</p>
-          <p className="text-xs mt-0.5 font-mono" style={{ color: "#94A3B8" }}>{payment.comprobante}</p>
+          <p className="text-sm font-medium" style={{ color: "var(--nv-text-1)" }}>{payment.dateLabel}</p>
+          <p className="text-xs mt-0.5 font-mono" style={{ color: "var(--nv-text-4)" }}>{payment.comprobante}</p>
         </div>
       </td>
 
@@ -254,13 +254,13 @@ function PaymentRow({ payment, idx }: { payment: Payment; idx: number }) {
         <div className="flex items-center gap-2">
           <div
             className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{ background: "linear-gradient(135deg, #E0F4FF, #ddfaf7)", border: "1px solid #BAE6FD" }}
+            style={{ background: "linear-gradient(135deg, var(--nv-blue-soft), var(--nv-teal-soft))", border: "1px solid var(--nv-blue-border)" }}
           >
             <NavIcon id="cloud" size={13} />
           </div>
           <div>
-            <span className="text-sm font-semibold" style={{ color: "#334155" }}>Plan {payment.plan}</span>
-            <p className="text-[10px] capitalize" style={{ color: "#94A3B8" }}>{payment.periodicidad}</p>
+            <span className="text-sm font-semibold" style={{ color: "var(--nv-text-2)" }}>Plan {payment.plan}</span>
+            <p className="text-[10px] capitalize" style={{ color: "var(--nv-text-4)" }}>{payment.periodicidad}</p>
           </div>
         </div>
       </td>
@@ -269,7 +269,7 @@ function PaymentRow({ payment, idx }: { payment: Payment; idx: number }) {
       <td className="px-5 py-4">
         <span
           className="text-sm font-extrabold"
-          style={{ color: "#0F172A", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+          style={{ color: "var(--nv-text-1)", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
         >
           ${payment.amount.toFixed(2)}
         </span>
@@ -285,10 +285,10 @@ function PaymentRow({ payment, idx }: { payment: Payment; idx: number }) {
             >
               {marca.label}
             </div>
-            <span className="text-xs" style={{ color: "#94A3B8" }}>•••• {payment.last4}</span>
+            <span className="text-xs" style={{ color: "var(--nv-text-4)" }}>•••• {payment.last4}</span>
           </div>
         ) : (
-          <span className="text-xs" style={{ color: "#CBD5E1" }}>—</span>
+          <span className="text-xs" style={{ color: "var(--nv-border-strong)" }}>—</span>
         )}
       </td>
 
@@ -304,12 +304,12 @@ function PaymentRow({ payment, idx }: { payment: Payment; idx: number }) {
           disabled={!canDownload}
           className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all duration-150"
           style={{
-            background: canDownload ? "#E0F4FF" : "#F8FAFC",
-            color: canDownload ? "#2E9BFF" : "#CBD5E1",
+            background: canDownload ? "var(--nv-blue-soft)" : "var(--nv-bg)",
+            color: canDownload ? "#2E9BFF" : "var(--nv-border-strong)",
             cursor: canDownload ? "pointer" : "not-allowed",
           }}
-          onMouseEnter={(e) => { if (canDownload) { e.currentTarget.style.background = "#BAE6FD"; } }}
-          onMouseLeave={(e) => { if (canDownload) { e.currentTarget.style.background = "#E0F4FF"; } }}
+          onMouseEnter={(e) => { if (canDownload) { e.currentTarget.style.background = "var(--nv-blue-border)"; } }}
+          onMouseLeave={(e) => { if (canDownload) { e.currentTarget.style.background = "var(--nv-blue-soft)"; } }}
           title={error || (canDownload ? "Descargar comprobante" : "Sin comprobante disponible")}
         >
           {downloading ? (
@@ -332,13 +332,13 @@ function EstadoVacio({ titulo, texto, accion }: { titulo: string; texto: string;
   return (
     <div
       className="rounded-2xl flex flex-col items-center justify-center py-20 text-center"
-      style={{ background: "white", border: "1px solid #E2E8F0" }}
+      style={{ background: "var(--nv-surface)", border: "1px solid var(--nv-border)" }}
     >
-      <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4" style={{ background: "#F1F5F9", color: "#CBD5E1" }}>
+      <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4" style={{ background: "var(--nv-muted)", color: "var(--nv-border-strong)" }}>
         <NavIcon id="card" size={28} />
       </div>
-      <p className="text-sm font-semibold" style={{ color: "#334155" }}>{titulo}</p>
-      <p className="text-xs mt-1" style={{ color: "#94A3B8" }}>{texto}</p>
+      <p className="text-sm font-semibold" style={{ color: "var(--nv-text-2)" }}>{titulo}</p>
+      <p className="text-xs mt-1" style={{ color: "var(--nv-text-4)" }}>{texto}</p>
       {accion}
     </div>
   );
@@ -352,16 +352,16 @@ function PaymentsTable({ payments }: { payments: Payment[] }) {
   }
 
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid #E2E8F0" }}>
+    <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--nv-border)" }}>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>
-            <tr style={{ background: "#F8FAFC", borderBottom: "1px solid #E2E8F0" }}>
+            <tr style={{ background: "var(--nv-bg)", borderBottom: "1px solid var(--nv-border)" }}>
               {headers.map((h, i) => (
                 <th
                   key={h}
                   className={`px-5 py-3.5 text-left text-[10px] font-bold uppercase tracking-widest ${i === 3 ? "hidden md:table-cell" : ""}`}
-                  style={{ color: "#334155" }}
+                  style={{ color: "var(--nv-text-2)" }}
                 >
                   {h}
                 </th>
@@ -379,15 +379,15 @@ function PaymentsTable({ payments }: { payments: Payment[] }) {
       {/* Table footer */}
       <div
         className="flex items-center justify-between px-5 py-3.5"
-        style={{ borderTop: "1px solid #F1F5F9", background: "#FAFBFC" }}
+        style={{ borderTop: "1px solid var(--nv-muted)", background: "var(--nv-bg)" }}
       >
-        <p className="text-xs" style={{ color: "#94A3B8" }}>
-          Mostrando <span className="font-semibold" style={{ color: "#334155" }}>{payments.length}</span> pagos
+        <p className="text-xs" style={{ color: "var(--nv-text-4)" }}>
+          Mostrando <span className="font-semibold" style={{ color: "var(--nv-text-2)" }}>{payments.length}</span> pagos
         </p>
-        <div className="flex items-center gap-1.5 text-xs" style={{ color: "#94A3B8" }}>
+        <div className="flex items-center gap-1.5 text-xs" style={{ color: "var(--nv-text-4)" }}>
           <div className="w-2 h-2 rounded-full" style={{ background: "#00C896" }} />
           Total cobrado:{" "}
-          <span className="font-bold" style={{ color: "#0F172A" }}>
+          <span className="font-bold" style={{ color: "var(--nv-text-1)" }}>
             ${payments.filter((p) => p.status === "pagado").reduce((s, p) => s + p.amount, 0).toFixed(2)}
           </span>
         </div>
@@ -419,7 +419,7 @@ function CurrentPlanBanner({ onPlans }: { onPlans: () => void }) {
           <NavIcon id="card" size={20} />
         </div>
         <div>
-          <p className="text-xs font-semibold mb-0.5" style={{ color: "#93C5FD" }}>TU PLAN</p>
+          <p className="text-xs font-semibold mb-0.5" style={{ color: "var(--nv-blue-border)" }}>TU PLAN</p>
           {sus ? (
             <p className="text-sm font-bold text-white">
               Plan {sus.plan_nombre} —{" "}
@@ -540,18 +540,18 @@ export default function Payments({ onLogout, onDashboard, onPlans, onFiles, onCo
           {/* Table section */}
           <div
             className="rounded-2xl p-6"
-            style={{ background: "white", border: "1px solid #E2E8F0" }}
+            style={{ background: "var(--nv-surface)", border: "1px solid var(--nv-border)" }}
           >
             {/* Section header */}
             <div className="flex items-center justify-between mb-5">
               <div>
                 <h2
                   className="text-base font-extrabold"
-                  style={{ color: "#0F172A", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                  style={{ color: "var(--nv-text-1)", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
                 >
                   Todos los pagos
                 </h2>
-                <p className="text-xs mt-0.5" style={{ color: "#94A3B8" }}>
+                <p className="text-xs mt-0.5" style={{ color: "var(--nv-text-4)" }}>
                   Registro completo de transacciones de tu cuenta (pagos simulados, en USD)
                 </p>
               </div>
@@ -560,11 +560,11 @@ export default function Payments({ onLogout, onDashboard, onPlans, onFiles, onCo
                 disabled={filtered.length === 0}
                 className="flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-xl transition-all duration-150"
                 style={{
-                  color: "#2E9BFF", border: "1.5px solid #2E9BFF", background: "white",
+                  color: "#2E9BFF", border: "1.5px solid #2E9BFF", background: "var(--nv-surface)",
                   opacity: filtered.length === 0 ? 0.5 : 1, cursor: filtered.length === 0 ? "not-allowed" : "pointer",
                 }}
-                onMouseEnter={(e) => { if (filtered.length) e.currentTarget.style.background = "#E0F4FF"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "white"; }}
+                onMouseEnter={(e) => { if (filtered.length) e.currentTarget.style.background = "var(--nv-blue-soft)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "var(--nv-surface)"; }}
               >
                 <NavIcon id="download" size={13} />
                 Exportar CSV
@@ -572,7 +572,7 @@ export default function Payments({ onLogout, onDashboard, onPlans, onFiles, onCo
             </div>
 
             {cargando ? (
-              <p className="text-center text-xs py-20" style={{ color: "#94A3B8" }}>Cargando pagos…</p>
+              <p className="text-center text-xs py-20" style={{ color: "var(--nv-text-4)" }}>Cargando pagos…</p>
             ) : error ? (
               <EstadoVacio
                 titulo="No se pudo cargar el historial"

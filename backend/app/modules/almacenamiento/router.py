@@ -1,16 +1,16 @@
 from urllib.parse import quote
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.core.deps import requiere_cliente
 from app.core.storage import AlmacenS3, ErrorAlmacen, ObjetoNoEncontrado, get_almacen
 from app.db.session import get_db
-from app.modules.almacenamiento import service
+from app.modules.almacenamiento import resumen, service
 from app.modules.almacenamiento.schemas import (
-    ArchivoActualizar, ArchivoOut, CarpetaActualizar, CarpetaCrear, CarpetaOut, RutaItem, UsoOut,
+    ArchivoActualizar, ArchivoOut, CarpetaActualizar, CarpetaCrear, CarpetaOut, ResumenOut, RutaItem, UsoOut,
 )
 from app.modules.auth.models import Usuario
 
@@ -20,6 +20,16 @@ router = APIRouter(tags=["Almacenamiento"])
 @router.get("/almacenamiento/uso", response_model=UsoOut)
 def uso(usuario: Usuario = Depends(requiere_cliente), db: Session = Depends(get_db)):
     return service.resumen_uso(db, usuario)
+
+
+@router.get("/almacenamiento/resumen", response_model=ResumenOut)
+def resumen_espacio(
+    desfase_min: int = Query(0, ge=-840, le=840, description="Minutos respecto a UTC del navegador (Guatemala: -360)"),
+    usuario: Usuario = Depends(requiere_cliente),
+    db: Session = Depends(get_db),
+):
+    """Todo lo que muestran el dashboard y el panel de consumo, en una sola llamada."""
+    return resumen.resumen_cliente(db, usuario, desfase_min)
 
 
 # ── Carpetas ──────────────────────────────────────────────────────────────────
@@ -103,6 +113,7 @@ def descargar(
         raise HTTPException(404, "El archivo ya no está disponible en el almacenamiento")
     except ErrorAlmacen as e:
         raise HTTPException(502, str(e))
+    service.registrar_descarga(db, usuario, archivo)
     return StreamingResponse(
         cuerpo,
         media_type=archivo.tipo_mime,

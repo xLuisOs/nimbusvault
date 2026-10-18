@@ -1,4 +1,5 @@
 from datetime import timedelta
+from uuid import UUID
 
 from fastapi import HTTPException, status
 from sqlalchemy import select, update
@@ -6,11 +7,13 @@ from sqlalchemy.orm import Session
 
 from app.core import email
 from app.core.config import settings
+from app.core.storage import AlmacenS3
 from app.core.security import (
     ahora, crear_access_token, generar_token, hash_password, hash_token, verificar_password,
 )
+from app.modules.auth.cuenta import borrar_cuenta
 from app.modules.auth.models import (
-    ESTADO_ACTIVO, ESTADO_PENDIENTE, ESTADO_SUSPENDIDO, ROL_CLIENTE, TOKEN_RECUPERACION, TOKEN_VERIFICACION,
+    ESTADO_ACTIVO, ESTADO_PENDIENTE, ESTADO_SUSPENDIDO, ROL_ADMIN, ROL_CLIENTE, TOKEN_RECUPERACION, TOKEN_VERIFICACION,
     Rol, Sesion, TokenUsuario, Usuario,
 )
 from app.modules.auth.schemas import RegistroIn, SuscripcionResumen, UsuarioOut
@@ -193,3 +196,72 @@ def restablecer_password(db: Session, token: str, password: str) -> None:
         usuario.correo_verificado_en = ahora()
         asignar_plan_gratis(db, usuario)
     db.commit()
+
+
+# ── Configuración de la cuenta ───────────────────────────────────────────────
+
+def _sesion_actual(db: Session, refresh: str | None) -> Sesion | None:
+    if not refresh:
+        return None
+    return db.scalar(select(Sesion).where(Sesion.refresh_token_hash == hash_token(refresh)))
+
+
+def actualizar_perfil(db: Session, usuario: Usuario, nombre: str) -> Usuario:
+    usuario.nombre = nombre
+    db.commit()
+    db.refresh(usuario)
+    return usuario
+
+
+def cambiar_password(db: Session, usuario: Usuario, actual: str, nueva: str, refresh: str | None) -> None:
+    if not verificar_password(actual, usuario.password_hash):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "La contraseña actual no es correcta")
+    if verificar_password(nueva, usuario.password_hash):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "La nueva contraseña debe ser distinta de la actual")
+    usuario.password_hash = hash_password(nueva)
+    cerrar_otras_sesiones(db, usuario, refresh)  # si alguien más tenía la contraseña, queda fuera
+
+
+def sesiones_activas(db: Session, usuario: Usuario, refresh: str | None) -> list[dict]:
+    actual = _sesion_actual(db, refresh)
+    sesiones = db.scalars(
+        select(Sesion)
+        .where(Sesion.id_usuario == usuario.id_usuario, Sesion.revocada_en.is_(None))
+        .order_by(Sesion.creado_en.desc())
+    )
+    return [
+        {"id_sesion": s.id_sesion, "ip": s.ip, "user_agent": s.user_agent, "creado_en": s.creado_en,
+         "expira_en": s.expira_en, "actual": actual is not None and s.id_sesion == actual.id_sesion}
+        for s in sesiones if _con_zona(s.expira_en) > ahora()
+    ]
+
+
+def cerrar_sesion_por_id(db: Session, usuario: Usuario, id_sesion: UUID, refresh: str | None) -> bool:
+    """Cierra una de mis sesiones. Devuelve True si era la de este navegador."""
+    sesion = db.get(Sesion, id_sesion)
+    if sesion is None or sesion.id_usuario != usuario.id_usuario:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Sesión no encontrada")
+    if sesion.revocada_en is None:
+        sesion.revocada_en = ahora()
+        db.commit()
+    actual = _sesion_actual(db, refresh)
+    return actual is not None and actual.id_sesion == sesion.id_sesion
+
+
+def cerrar_otras_sesiones(db: Session, usuario: Usuario, refresh: str | None) -> int:
+    actual = _sesion_actual(db, refresh)
+    q = update(Sesion).where(Sesion.id_usuario == usuario.id_usuario, Sesion.revocada_en.is_(None))
+    if actual is not None:
+        q = q.where(Sesion.id_sesion != actual.id_sesion)
+    cerradas = db.execute(q.values(revocada_en=ahora())).rowcount
+    db.commit()
+    return cerradas
+
+
+def eliminar_mi_cuenta(db: Session, almacen: AlmacenS3 | None, usuario: Usuario, password: str) -> None:
+    if not verificar_password(password, usuario.password_hash):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "La contraseña no es correcta")
+    if usuario.rol.nombre == ROL_ADMIN:
+        # Así la plataforma nunca se queda sin administrador por accidente
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Un administrador no puede eliminar su propia cuenta")
+    borrar_cuenta(db, almacen, usuario)
