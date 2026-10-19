@@ -147,6 +147,10 @@ function PlanCard({ onChangePlan }: { onChangePlan: () => void }) {
   // Datos reales de la suscripción activa (GET /api/auth/me)
   const { usuario } = useAuth();
   const sus = usuario?.suscripcion;
+  const vencido = sus?.estado === "vencida";
+  const estadoPlan = vencido ? "Vencido" : sus ? "Activo" : "Sin plan";
+  const estadoColor = vencido ? "#DC2626" : "#2E9BFF";
+  const estadoBg = vencido ? "#FEE2E2" : "#E0F4FF";
   const precio = sus ? Number(sus.precio_contratado) : 0;
   const renewalStr = sus ? formatoFecha(sus.fecha_fin) : "—";
 
@@ -159,16 +163,16 @@ function PlanCard({ onChangePlan }: { onChangePlan: () => void }) {
         <p className="text-xs font-semibold" style={{ color: "#94A3B8" }}>PLAN ACTUAL</p>
         <span
           className="text-xs font-bold px-2.5 py-1 rounded-full"
-          style={{ background: "#E0F4FF", color: "#2E9BFF" }}
+          style={{ background: estadoBg, color: estadoColor }}
         >
-          {sus ? "Activo" : "Sin plan"}
+          {estadoPlan}
         </span>
       </div>
 
       <div className="flex items-center gap-3">
         <div
           className="w-10 h-10 rounded-xl flex items-center justify-center"
-          style={{ background: "linear-gradient(135deg, #2E9BFF 0%, #00D1C1 100%)" }}
+          style={{ background: vencido ? "linear-gradient(135deg, #F59E0B 0%, #F97316 100%)" : "linear-gradient(135deg, #2E9BFF 0%, #00D1C1 100%)" }}
         >
           <NavIcon id="cloud" />
         </div>
@@ -180,7 +184,11 @@ function PlanCard({ onChangePlan }: { onChangePlan: () => void }) {
             {sus ? `Plan ${sus.plan_nombre}` : "Sin plan activo"}
           </p>
           <p className="text-xs" style={{ color: "#94A3B8" }}>
-            {precio === 0 ? "Gratis · se renueva solo" : `${formatoDolares(precio)}/mes · facturación mensual`}
+            {vencido
+              ? "Tu acceso está vencido. Renueva para recuperar almacenamiento."
+              : precio === 0
+                ? "Gratis · se renueva solo"
+                : `${formatoDolares(precio)}/mes · facturación mensual`}
           </p>
         </div>
       </div>
@@ -201,11 +209,11 @@ function PlanCard({ onChangePlan }: { onChangePlan: () => void }) {
       <button
         onClick={onChangePlan}
         className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all duration-150"
-        style={{ color: "#2E9BFF", border: "1.5px solid #2E9BFF", background: "white" }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = "#E0F4FF"; }}
+        style={{ color: vencido ? "#B91C1C" : "#2E9BFF", border: `1.5px solid ${vencido ? "#FCA5A5" : "#2E9BFF"}`, background: "white" }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = vencido ? "#FEF2F2" : "#E0F4FF"; }}
         onMouseLeave={(e) => { e.currentTarget.style.background = "white"; }}
       >
-        Cambiar de plan
+        {vencido ? "Renovar plan" : "Cambiar de plan"}
       </button>
     </div>
   );

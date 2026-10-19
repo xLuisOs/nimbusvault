@@ -14,7 +14,7 @@ from app.modules.auth.models import (
     Rol, Sesion, TokenUsuario, Usuario,
 )
 from app.modules.auth.schemas import RegistroIn, SuscripcionResumen, UsuarioOut
-from app.modules.suscripciones.service import _con_zona, asignar_plan_gratis, suscripcion_activa
+from app.modules.suscripciones.service import _con_zona, asignar_plan_gratis, suscripcion_actual
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -55,7 +55,7 @@ def _consumir_token(db: Session, token: str, tipo: str) -> Usuario:
 
 
 def usuario_a_schema(db: Session, usuario: Usuario) -> UsuarioOut:
-    sus = suscripcion_activa(db, usuario.id_usuario)
+    sus = suscripcion_actual(db, usuario.id_usuario)
     resumen = None
     if sus:
         resumen = SuscripcionResumen(

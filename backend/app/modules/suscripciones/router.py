@@ -36,3 +36,29 @@ def cambiar_plan(
             "almacenamiento_gb": sus.plan.almacenamiento_gb,
         },
     }
+
+
+class RenovarSuscripcionIn(BaseModel):
+    id_plan: UUID | None = Field(default=None, description="ID del plan a contratar. Si se omite, se usa el plan actual.")
+    periodicidad: str = Field(default="mensual", min_length=7, max_length=10)
+
+
+@router.post("/renovar", status_code=status.HTTP_200_OK)
+def renovar_suscripcion(
+    datos: RenovarSuscripcionIn,
+    usuario: Usuario = Depends(get_usuario_actual),
+    db: Session = Depends(get_db),
+):
+    sus = service.renovar_suscripcion_usuario(db, usuario, datos.id_plan, datos.periodicidad)
+    return {
+        "mensaje": "Suscripción renovada correctamente",
+        "suscripcion": {
+            "id_suscripcion": str(sus.id_suscripcion),
+            "id_plan": str(sus.id_plan),
+            "estado": sus.estado,
+            "periodicidad": sus.periodicidad,
+            "fecha_inicio": sus.fecha_inicio.isoformat(),
+            "fecha_fin": sus.fecha_fin.isoformat(),
+            "almacenamiento_gb": sus.plan.almacenamiento_gb,
+        },
+    }

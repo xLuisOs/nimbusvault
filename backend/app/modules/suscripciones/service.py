@@ -107,6 +107,14 @@ def renovar_suscripcion(db: Session, sus: Suscripcion) -> Suscripcion:
     return sus
 
 
+def suscripcion_actual(db: Session, id_usuario: UUID) -> Suscripcion | None:
+    return db.scalar(
+        select(Suscripcion)
+        .where(Suscripcion.id_usuario == id_usuario, Suscripcion.estado != "cancelada")
+        .order_by(Suscripcion.fecha_inicio.desc())
+    )
+
+
 def suscripcion_activa(db: Session, id_usuario: UUID) -> Suscripcion | None:
     sus = db.scalar(
         select(Suscripcion).where(Suscripcion.id_usuario == id_usuario, Suscripcion.estado == ESTADO_ACTIVA)
@@ -124,4 +132,56 @@ def suscripcion_activa(db: Session, id_usuario: UUID) -> Suscripcion | None:
         sus.estado = ESTADO_VENCIDA
         db.commit()
         return None
+    return sus
+
+
+def suscripcion_por_usuario(db: Session, id_usuario: UUID) -> Suscripcion | None:
+    return db.scalar(select(Suscripcion).where(Suscripcion.id_usuario == id_usuario).order_by(Suscripcion.fecha_inicio.desc()))
+
+
+def renovar_suscripcion_usuario(
+    db: Session,
+    usuario: Usuario,
+    id_plan: UUID | None = None,
+    periodicidad: str = "mensual",
+) -> Suscripcion:
+    """Renueva la suscripción vigente o vencida usando el plan actual o uno elegido explícitamente."""
+    if periodicidad not in {"mensual", "anual"}:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "La periodicidad debe ser 'mensual' o 'anual'")
+
+    sus = db.scalar(
+        select(Suscripcion).where(
+            Suscripcion.id_usuario == usuario.id_usuario,
+            Suscripcion.estado.in_([ESTADO_ACTIVA, ESTADO_VENCIDA]),
+        )
+    )
+    if sus is None:
+        if id_plan is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "No tienes una suscripción para renovar")
+        # En caso de que el usuario no tenga ninguna suscripción activa/vencida, se puede crear una desde cero.
+        return cambiar_plan(db, usuario, id_plan, periodicidad)
+
+    plan_objetivo = sus.plan if id_plan is None else db.get(Plan, id_plan)
+    if plan_objetivo is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Plan no encontrado")
+    if not plan_objetivo.activo:
+        raise HTTPException(status.HTTP_409_CONFLICT, "El plan está desactivado")
+
+    inicio = ahora()
+    # Si la suscripción ya estaba activa y todavía no venció, se renovará desde la fecha de fin actual.
+    # Si ya venció, se reactiva desde el momento actual.
+    base_inicio = inicio if sus.estado == ESTADO_VENCIDA or _con_zona(sus.fecha_fin) <= inicio else _con_zona(sus.fecha_fin)
+
+    sus.id_plan = plan_objetivo.id_plan
+    sus.periodicidad = periodicidad
+    sus.precio_contratado = plan_objetivo.precio_mensual
+    sus.fecha_inicio = base_inicio
+    sus.fecha_fin = base_inicio + timedelta(days=plan_objetivo.vigencia_dias)
+    sus.estado = ESTADO_ACTIVA
+    sus.renovacion_automatica = True
+    sus.cancelada_en = None
+
+    db.add(sus)
+    db.commit()
+    db.refresh(sus)
     return sus

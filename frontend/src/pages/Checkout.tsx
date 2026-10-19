@@ -265,7 +265,9 @@ function PaymentForm({ plan, onConfirm }: PaymentFormProps) {
   const [name, setName] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
-  const { recargarUsuario } = useAuth();
+  const { recargarUsuario, usuario } = useAuth();
+  const estadoSuscripcion = usuario?.suscripcion?.estado ?? null;
+  const esRenovacion = estadoSuscripcion === "vencida";
 
   const brand = cardBrand(cardNumber);
 
@@ -282,6 +284,13 @@ function PaymentForm({ plan, onConfirm }: PaymentFormProps) {
     return e;
   }
 
+  const envio = async () => {
+    if (esRenovacion) {
+      return suscripcionesApi.renovar(plan.id, plan.annual ? "anual" : "mensual");
+    }
+    return suscripcionesApi.cambiarPlan(plan.id, plan.annual ? "anual" : "mensual");
+  };
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const errs = validate();
@@ -290,13 +299,13 @@ function PaymentForm({ plan, onConfirm }: PaymentFormProps) {
     setLoading(true);
 
     try {
-      await suscripcionesApi.cambiarPlan(plan.id, plan.annual ? "anual" : "mensual");
+      await envio();
       await recargarUsuario();
       setLoading(false);
       onConfirm();
     } catch (error: unknown) {
       setLoading(false);
-      const message = error instanceof Error ? error.message : "No se pudo cambiar de plan.";
+      const message = error instanceof Error ? error.message : "No se pudo completar la operación.";
       setErrors({ card: message });
     }
   }
@@ -315,15 +324,19 @@ function PaymentForm({ plan, onConfirm }: PaymentFormProps) {
       {/* Disclaimer */}
       <div
         className="flex items-start gap-2.5 rounded-xl px-4 py-3"
-        style={{ background: "#FFFBEB", border: "1px solid #FDE68A" }}
+        style={{ background: esRenovacion ? "#FEE2E2" : "#FFFBEB", border: `1px solid ${esRenovacion ? "#FCA5A5" : "#FDE68A"}` }}
       >
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="flex-shrink-0 mt-0.5">
-          <path d="M8 1.5L14.5 13H1.5L8 1.5Z" stroke="#F59E0B" strokeWidth="1.4" strokeLinejoin="round" />
-          <path d="M8 6v3M8 10.5v.5" stroke="#F59E0B" strokeWidth="1.4" strokeLinecap="round" />
+          <path d="M8 1.5L14.5 13H1.5L8 1.5Z" stroke={esRenovacion ? "#DC2626" : "#F59E0B"} strokeWidth="1.4" strokeLinejoin="round" />
+          <path d="M8 6v3M8 10.5v.5" stroke={esRenovacion ? "#DC2626" : "#F59E0B"} strokeWidth="1.4" strokeLinecap="round" />
         </svg>
-        <p className="text-xs leading-relaxed" style={{ color: "#92400E" }}>
-          <span className="font-bold">Entorno académico.</span>{" "}
-          <span style={{ color: "#94A3B8" }}>Pago simulado con fines académicos. No se realizará ningún cargo real.</span>
+        <p className="text-xs leading-relaxed" style={{ color: esRenovacion ? "#7F1D1D" : "#92400E" }}>
+          <span className="font-bold">{esRenovacion ? "Plan vencido." : "Entorno académico."}</span>{" "}
+          <span style={{ color: esRenovacion ? "#7F1D1D" : "#94A3B8" }}>
+            {esRenovacion
+              ? "Al confirmar se reactivará la suscripción con pago simulado."
+              : "Pago simulado con fines académicos. No se realizará ningún cargo real."}
+          </span>
         </p>
       </div>
 
@@ -423,7 +436,7 @@ function PaymentForm({ plan, onConfirm }: PaymentFormProps) {
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M2 5h12v8a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5ZM2 5V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1M6 9h4" stroke="white" strokeWidth="1.4" strokeLinecap="round" />
             </svg>
-            Confirmar pago simulado — {formatoDolares(plan.price)}/mes
+            {esRenovacion ? "Renovar pago simulado" : "Confirmar pago simulado"} — {formatoDolares(plan.price)}/mes
           </>
         )}
       </button>
