@@ -109,6 +109,61 @@ def renombrar_carpeta(db: Session, usuario: Usuario, id_carpeta: UUID, datos: Ca
     db.refresh(carpeta)
     return carpeta
 
+def mover_carpeta(
+    db: Session,
+    usuario: Usuario,
+    id_carpeta: UUID,
+    id_carpeta_padre: UUID | None,
+) -> Carpeta:
+    """Mueve una carpeta a otra ubicación del mismo usuario."""
+    carpeta = _carpeta_propia(db, usuario, id_carpeta)
+
+    # Si el destino no es la raíz, debe pertenecer al usuario.
+    if id_carpeta_padre is not None:
+        _carpeta_propia(db, usuario, id_carpeta_padre)
+
+    # No permitir mover una carpeta dentro de sí misma.
+    if id_carpeta_padre == id_carpeta:
+        raise HTTPException(409, "No puedes mover una carpeta dentro de sí misma")
+
+    # Recorrer los ancestros del destino para detectar ciclos.
+    ancestro_id = id_carpeta_padre
+    visitados = set()
+
+    while ancestro_id is not None:
+        if ancestro_id == id_carpeta:
+            raise HTTPException(
+                409,
+                "No puedes mover una carpeta dentro de una subcarpeta suya",
+            )
+
+        if ancestro_id in visitados:
+            raise HTTPException(409, "La estructura de carpetas contiene un ciclo")
+
+        visitados.add(ancestro_id)
+        ancestro = db.get(Carpeta, ancestro_id)
+
+        if ancestro is None or ancestro.id_usuario != usuario.id_usuario:
+            raise HTTPException(404, "Carpeta de destino no encontrada")
+
+        ancestro_id = ancestro.id_carpeta_padre
+
+    # Evitar nombres repetidos en el destino, ignorando mayúsculas.
+    _nombre_libre(
+        db,
+        usuario,
+        id_carpeta_padre,
+        carpeta.nombre,
+        excluir=carpeta.id_carpeta,
+    )
+
+    # Actualizar el padre de la carpeta.
+    carpeta.id_carpeta_padre = id_carpeta_padre
+
+    db.commit()
+    db.refresh(carpeta)
+    return carpeta
+
 
 def ruta_carpeta(db: Session, usuario: Usuario, id_carpeta: UUID) -> list[Carpeta]:
     """Ancestros de la carpeta, de la raíz hacia ella (para el breadcrumb del explorador)."""

@@ -23,6 +23,10 @@ class CarpetaCrear(CarpetaNombre):
 class CarpetaActualizar(CarpetaNombre):
     pass
 
+class CarpetaMover(BaseModel):
+    """Destino de una carpeta. id_carpeta_padre=None significa la raíz."""
+
+    id_carpeta_padre: UUID | None = None
 
 class ArchivoActualizar(BaseModel):
     """Renombrar y/o mover. Mandar `id_carpeta: null` explícitamente lo mueve a la raíz;
