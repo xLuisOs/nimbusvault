@@ -136,23 +136,27 @@ class AlmacenS3:
             raise ErrorAlmacen("No se pudo guardar el archivo en el almacenamiento") from e
 
     def descargar(self, clave: str) -> Iterator[bytes]:
+        """Pide el objeto de inmediato (así los errores salen antes de empezar a responder)
+        y devuelve un iterador con su contenido por partes.
+
+        Ojo: esta función no debe tener `yield`. Si lo tiene, Python la vuelve generador:
+        la petición no se hace hasta empezar a transmitir y el `return` de boto quedaría vacío.
+        """
         if self._use_supabase_rest:
             try:
                 headers = {"Authorization": f"Bearer {settings.s3_secret_key}", "apikey": settings.s3_secret_key}
                 url = f"{self._supabase_rest_base}/object/{self.bucket}/{clave}"
                 r = requests.get(url, headers=headers, stream=True, timeout=60)
-                if r.status_code == 404:
-                    raise ObjetoNoEncontrado(clave)
-                if r.status_code >= 400:
-                    log.error("Falló la descarga REST de %s: %s %s", clave, r.status_code, r.text)
-                    raise ErrorAlmacen("No se pudo leer el archivo del almacenamiento (supabase)")
-                for chunk in r.iter_content(chunk_size=64 * 1024):
-                    if chunk:
-                        yield chunk
-                return
             except requests.RequestException as e:
                 log.error("Falló la descarga REST de %s: %s", clave, e)
                 raise ErrorAlmacen("No se pudo leer el archivo del almacenamiento (supabase)") from e
+            # Supabase responde 400 con "not_found" en algunas versiones en lugar de 404
+            if r.status_code == 404 or (r.status_code == 400 and "not_found" in r.text.lower()):
+                raise ObjetoNoEncontrado(clave)
+            if r.status_code >= 400:
+                log.error("Falló la descarga REST de %s: %s %s", clave, r.status_code, r.text)
+                raise ErrorAlmacen("No se pudo leer el archivo del almacenamiento (supabase)")
+            return (chunk for chunk in r.iter_content(chunk_size=64 * 1024) if chunk)
 
         try:
             resp = self.cliente.get_object(Bucket=self.bucket, Key=clave)
@@ -165,6 +169,22 @@ class AlmacenS3:
             log.error("Falló la descarga de %s: %s", clave, e)
             raise ErrorAlmacen("No se pudo leer el archivo del almacenamiento") from e
         return resp["Body"].iter_chunks(chunk_size=64 * 1024)
+
+    def verificar(self) -> None:
+        """Consulta liviana al bucket para el panel de infraestructura. Lanza ErrorAlmacen si no responde."""
+        if self._use_supabase_rest:
+            headers = {"Authorization": f"Bearer {settings.s3_secret_key}", "apikey": settings.s3_secret_key}
+            try:
+                r = requests.get(f"{self._supabase_rest_base}/bucket/{self.bucket}", headers=headers, timeout=5)
+            except requests.RequestException as e:
+                raise ErrorAlmacen(f"Supabase Storage no responde: {e}") from e
+            if r.status_code != 200:
+                raise ErrorAlmacen(f"Supabase Storage respondió {r.status_code}")
+            return
+        try:
+            self.cliente.head_bucket(Bucket=self.bucket)
+        except (ClientError, BotoCoreError) as e:
+            raise ErrorAlmacen(f"El bucket no responde: {e}") from e
 
     def borrar(self, clave: str) -> None:
         """Borrado de mejor esfuerzo: nunca lanza. Un objeto huérfano es basura, no un error del usuario."""
@@ -195,3 +215,11 @@ def get_almacen() -> AlmacenS3:
         return _instancia()
     except ErrorAlmacen as e:
         raise HTTPException(503, str(e))
+
+
+def get_almacen_opcional() -> AlmacenS3 | None:
+    """Como get_almacen, pero sin fallar: el panel admin debe cargar aunque el almacenamiento esté caído."""
+    try:
+        return _instancia()
+    except ErrorAlmacen:
+        return None

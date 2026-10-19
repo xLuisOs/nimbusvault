@@ -8,9 +8,12 @@ from sqlalchemy import case, func, select, update
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.security import ahora
 from app.core.storage import AlmacenS3, ErrorAlmacen
+from app.modules.actividad import service as actividad
+from app.modules.actividad.models import TIPO_CARPETA, TIPO_DESCARGA, TIPO_ELIMINACION, TIPO_SUBIDA
 from app.modules.almacenamiento.models import Archivo, Carpeta
-from app.modules.almacenamiento.schemas import CarpetaCrear
+from app.modules.almacenamiento.schemas import ArchivoActualizar, CarpetaActualizar, CarpetaCrear
 from app.modules.auth.models import Usuario
 from app.modules.suscripciones.models import Suscripcion
 from app.modules.suscripciones.service import suscripcion_activa
@@ -62,13 +65,29 @@ def _carpeta_propia(db: Session, usuario: Usuario, id_carpeta: UUID) -> Carpeta:
     return carpeta
 
 
+def _nombre_libre(
+    db: Session, usuario: Usuario, id_padre: UUID | None, nombre: str, excluir: UUID | None = None
+) -> None:
+    """Dos carpetas hermanas no pueden llamarse igual (sin distinguir mayúsculas)."""
+    q = select(Carpeta.id_carpeta).where(
+        Carpeta.id_usuario == usuario.id_usuario, func.lower(Carpeta.nombre) == nombre.lower()
+    )
+    q = q.where(Carpeta.id_carpeta_padre == id_padre) if id_padre else q.where(Carpeta.id_carpeta_padre.is_(None))
+    if excluir is not None:
+        q = q.where(Carpeta.id_carpeta != excluir)
+    if db.scalar(q.limit(1)) is not None:
+        raise HTTPException(409, f"Ya existe una carpeta llamada «{nombre}» en esta ubicación")
+
+
 def crear_carpeta(db: Session, usuario: Usuario, datos: CarpetaCrear) -> Carpeta:
     if datos.id_carpeta_padre is not None:
         _carpeta_propia(db, usuario, datos.id_carpeta_padre)
+    _nombre_libre(db, usuario, datos.id_carpeta_padre, datos.nombre)
     carpeta = Carpeta(
         id_usuario=usuario.id_usuario, id_carpeta_padre=datos.id_carpeta_padre, nombre=datos.nombre
     )
     db.add(carpeta)
+    actividad.registrar(db, usuario.id_usuario, TIPO_CARPETA, datos.nombre)
     db.commit()
     db.refresh(carpeta)
     return carpeta
@@ -80,6 +99,83 @@ def listar_carpetas(db: Session, usuario: Usuario, id_padre: UUID | None) -> lis
     q = select(Carpeta).where(Carpeta.id_usuario == usuario.id_usuario)
     q = q.where(Carpeta.id_carpeta_padre == id_padre) if id_padre else q.where(Carpeta.id_carpeta_padre.is_(None))
     return list(db.scalars(q.order_by(Carpeta.nombre)))
+
+
+def renombrar_carpeta(db: Session, usuario: Usuario, id_carpeta: UUID, datos: CarpetaActualizar) -> Carpeta:
+    carpeta = _carpeta_propia(db, usuario, id_carpeta)
+    _nombre_libre(db, usuario, carpeta.id_carpeta_padre, datos.nombre, excluir=carpeta.id_carpeta)
+    carpeta.nombre = datos.nombre
+    db.commit()
+    db.refresh(carpeta)
+    return carpeta
+
+def mover_carpeta(
+    db: Session,
+    usuario: Usuario,
+    id_carpeta: UUID,
+    id_carpeta_padre: UUID | None,
+) -> Carpeta:
+    """Mueve una carpeta a otra ubicación del mismo usuario."""
+    carpeta = _carpeta_propia(db, usuario, id_carpeta)
+
+    # Si el destino no es la raíz, debe pertenecer al usuario.
+    if id_carpeta_padre is not None:
+        _carpeta_propia(db, usuario, id_carpeta_padre)
+
+    # No permitir mover una carpeta dentro de sí misma.
+    if id_carpeta_padre == id_carpeta:
+        raise HTTPException(409, "No puedes mover una carpeta dentro de sí misma")
+
+    # Recorrer los ancestros del destino para detectar ciclos.
+    ancestro_id = id_carpeta_padre
+    visitados = set()
+
+    while ancestro_id is not None:
+        if ancestro_id == id_carpeta:
+            raise HTTPException(
+                409,
+                "No puedes mover una carpeta dentro de una subcarpeta suya",
+            )
+
+        if ancestro_id in visitados:
+            raise HTTPException(409, "La estructura de carpetas contiene un ciclo")
+
+        visitados.add(ancestro_id)
+        ancestro = db.get(Carpeta, ancestro_id)
+
+        if ancestro is None or ancestro.id_usuario != usuario.id_usuario:
+            raise HTTPException(404, "Carpeta de destino no encontrada")
+
+        ancestro_id = ancestro.id_carpeta_padre
+
+    # Evitar nombres repetidos en el destino, ignorando mayúsculas.
+    _nombre_libre(
+        db,
+        usuario,
+        id_carpeta_padre,
+        carpeta.nombre,
+        excluir=carpeta.id_carpeta,
+    )
+
+    # Actualizar el padre de la carpeta.
+    carpeta.id_carpeta_padre = id_carpeta_padre
+
+    db.commit()
+    db.refresh(carpeta)
+    return carpeta
+
+
+def ruta_carpeta(db: Session, usuario: Usuario, id_carpeta: UUID) -> list[Carpeta]:
+    """Ancestros de la carpeta, de la raíz hacia ella (para el breadcrumb del explorador)."""
+    ruta = [_carpeta_propia(db, usuario, id_carpeta)]
+    vistos = {id_carpeta}
+    while ruta[0].id_carpeta_padre is not None and ruta[0].id_carpeta_padre not in vistos:
+        padre = db.get(Carpeta, ruta[0].id_carpeta_padre)
+        if padre is None:
+            break
+        vistos.add(padre.id_carpeta)
+        ruta.insert(0, padre)
+    return ruta
 
 
 def eliminar_carpeta(db: Session, usuario: Usuario, id_carpeta: UUID) -> None:
@@ -159,9 +255,11 @@ def subir_archivo(
             clave_objeto=clave,
             tipo_mime=tipo,
             tamano_bytes=tam,
+            creado_en=ahora(),  # con microsegundos: "recientes" ordena bien aunque se suban varios en el mismo segundo
         )
         db.add(nuevo)
-        db.commit()  # archivo + espacio usado en la misma transacción
+        actividad.registrar(db, usuario.id_usuario, TIPO_SUBIDA, nombre, tam, tipo)
+        db.commit()  # archivo + espacio usado + actividad en la misma transacción
     except Exception:
         db.rollback()
         almacen.borrar(clave)  # compensación: no dejamos objetos huérfanos en el bucket
@@ -187,10 +285,35 @@ def obtener_archivo(db: Session, usuario: Usuario, id_archivo: UUID) -> Archivo:
     return archivo
 
 
+def registrar_descarga(db: Session, usuario: Usuario, archivo: Archivo) -> None:
+    actividad.registrar(db, usuario.id_usuario, TIPO_DESCARGA, archivo.nombre_original, archivo.tamano_bytes,
+                        archivo.tipo_mime)
+    db.commit()
+
+
+def actualizar_archivo(db: Session, usuario: Usuario, id_archivo: UUID, datos: ArchivoActualizar) -> Archivo:
+    """Renombra y/o mueve. Solo cambia la base: la llave del objeto en el bucket no depende del nombre ni de la carpeta."""
+    archivo = obtener_archivo(db, usuario, id_archivo)
+    cambia_carpeta = "id_carpeta" in datos.model_fields_set
+    if datos.nombre_original is None and not cambia_carpeta:
+        raise HTTPException(400, "Indica el nuevo nombre o la carpeta de destino")
+
+    if datos.nombre_original is not None:
+        archivo.nombre_original = _nombre_seguro(datos.nombre_original)
+    if cambia_carpeta:
+        if datos.id_carpeta is not None:
+            _carpeta_propia(db, usuario, datos.id_carpeta)  # 404 si el destino es de otra persona
+        archivo.id_carpeta = datos.id_carpeta
+    db.commit()
+    db.refresh(archivo)
+    return archivo
+
+
 def eliminar_archivo(db: Session, almacen: AlmacenS3, usuario: Usuario, id_archivo: UUID) -> None:
     archivo = obtener_archivo(db, usuario, id_archivo)
     clave, tam = archivo.clave_objeto, archivo.tamano_bytes
 
+    actividad.registrar(db, usuario.id_usuario, TIPO_ELIMINACION, archivo.nombre_original, tam, archivo.tipo_mime)
     db.delete(archivo)
     db.execute(
         update(Usuario)
