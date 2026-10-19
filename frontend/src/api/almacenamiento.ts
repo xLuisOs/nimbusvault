@@ -19,7 +19,13 @@ export const almacenamientoApi = {
   renombrarCarpeta: (id: string, nombre: string) =>
     api<Carpeta>(`/carpetas/${id}`, { method: "PATCH", body: { nombre } }),
   ruta: (id: string) => api<RutaItem[]>(`/carpetas/${id}/ruta`),
+  moverCarpeta: (id: string, idCarpetaPadre: string | null) =>
+  api<Carpeta>(`/carpetas/${id}/mover`, {
+    method: "PATCH",
+    body: { id_carpeta_padre: idCarpetaPadre },
+  }),
   eliminarCarpeta: (id: string) => api<void>(`/carpetas/${id}`, { method: "DELETE" }),
+
 
   // Archivos
   listarArchivos: (idCarpeta: string | null) => api<Archivo[]>(`/archivos${conCarpeta("id_carpeta", idCarpeta)}`),

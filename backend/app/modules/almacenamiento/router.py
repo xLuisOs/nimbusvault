@@ -10,7 +10,15 @@ from app.core.storage import AlmacenS3, ErrorAlmacen, ObjetoNoEncontrado, get_al
 from app.db.session import get_db
 from app.modules.almacenamiento import resumen, service
 from app.modules.almacenamiento.schemas import (
-    ArchivoActualizar, ArchivoOut, CarpetaActualizar, CarpetaCrear, CarpetaOut, ResumenOut, RutaItem, UsoOut,
+    ArchivoActualizar,
+    ArchivoOut,
+    CarpetaActualizar,
+    CarpetaCrear,
+    CarpetaMover,
+    CarpetaOut,
+    ResumenOut,
+    RutaItem,
+    UsoOut,
 )
 from app.modules.auth.models import Usuario
 
@@ -60,6 +68,20 @@ def renombrar_carpeta(
 ):
     return service.renombrar_carpeta(db, usuario, id_carpeta, datos)
 
+
+@router.patch("/carpetas/{id_carpeta}/mover", response_model=CarpetaOut)
+def mover_carpeta(
+    id_carpeta: UUID,
+    datos: CarpetaMover,
+    usuario: Usuario = Depends(requiere_cliente),
+    db: Session = Depends(get_db),
+):
+    return service.mover_carpeta(
+        db,
+        usuario,
+        id_carpeta,
+        datos.id_carpeta_padre,
+    )
 
 @router.get("/carpetas/{id_carpeta}/ruta", response_model=list[RutaItem])
 def ruta_carpeta(

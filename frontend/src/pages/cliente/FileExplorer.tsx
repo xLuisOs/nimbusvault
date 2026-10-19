@@ -49,9 +49,11 @@ type Accion = "open" | "download" | "rename" | "move" | "delete";
 
 interface CtxMenu { x: number; y: number; item: FsItem }
 
+
 const ACCIONES_CARPETA = [
   { id: "open", label: "Abrir", icon: "folder" },
   { id: "rename", label: "Renombrar", icon: "edit" },
+  { id: "move", label: "Mover a...", icon: "folder" },
   { id: "divider" },
   { id: "delete", label: "Eliminar", icon: "trash", danger: true },
 ] as const;
@@ -472,32 +474,40 @@ function ConfirmDeleteModal({ item, onClose, onConfirm }: {
 
 // ── Move modal ────────────────────────────────────────────────────────────────
 
+
 function MoveModal({ item, onClose, onMove }: {
   item: FsItem;
   onClose: () => void;
   onMove: (idDestino: string | null, nombreDestino: string) => Promise<void>;
 }) {
-  // Navegación propia dentro del modal: de la raíz hacia la carpeta destino
   const [ruta, setRuta] = useState<RutaItem[]>([]);
   const [carpetas, setCarpetas] = useState<Carpeta[]>([]);
   const [cargando, setCargando] = useState(true);
   const [moviendo, setMoviendo] = useState(false);
   const [error, setError] = useState("");
+
   const destino = ruta[ruta.length - 1] ?? null;
   const idDestino = destino?.id_carpeta ?? null;
 
   useEffect(() => {
     let vivo = true;
     setCargando(true);
+    setError("");
+
     almacenamientoApi
       .listarCarpetas(idDestino)
       .then((c) => vivo && setCarpetas(c))
       .catch((e) => vivo && setError(e.message))
       .finally(() => vivo && setCargando(false));
-    return () => { vivo = false; };
+
+    return () => {
+      vivo = false;
+    };
   }, [idDestino]);
 
   async function mover() {
+    if (destinoInvalido || mismaCarpeta) return;
+
     setMoviendo(true);
     try {
       await onMove(idDestino, destino?.nombre ?? "Mis archivos");
@@ -510,45 +520,119 @@ function MoveModal({ item, onClose, onMove }: {
 
   const mismaCarpeta = idDestino === item.idCarpeta;
 
+  // No permitir que una carpeta se mueva dentro de sí misma
+  // ni dentro de una carpeta descendiente.
+  const destinoInvalido =
+    item.type === "folder" &&
+    (idDestino === item.id ||
+      ruta.some((r) => r.id_carpeta === item.id));
+
+  const carpetasVisibles = carpetas.filter(
+    (c) => item.type !== "folder" || c.id_carpeta !== item.id
+  );
+
   return (
-    <ModalBase titulo={`Mover «${item.name}»`} icono="folder" color="#F59E0B" bg="var(--nv-amber-soft)" ancho="max-w-md" onClose={onClose}>
+    <ModalBase
+      titulo={`Mover «${item.name}»`}
+      icono="folder"
+      color="#F59E0B"
+      bg="var(--nv-amber-soft)"
+      ancho="max-w-md"
+      onClose={onClose}
+    >
       <div className="p-6 flex flex-col gap-4">
-        {/* Breadcrumb del destino */}
         <nav className="flex items-center gap-1.5 flex-wrap text-sm">
-          {[{ id_carpeta: "", nombre: "Mis archivos" }, ...ruta].map((r, idx, todos) => (
-            <span key={r.id_carpeta || "raiz"} className="flex items-center gap-1.5">
-              {idx > 0 && <span style={{ color: "var(--nv-border-strong)" }}>/</span>}
-              <button
-                onClick={() => setRuta(ruta.slice(0, idx))}
-                disabled={idx === todos.length - 1}
-                className="font-medium"
-                style={{ color: idx === todos.length - 1 ? "var(--nv-text-1)" : "#2E9BFF" }}
+          {[{ id_carpeta: "", nombre: "Mis archivos" }, ...ruta].map(
+            (r, idx, todos) => (
+              <span
+                key={r.id_carpeta || "raiz"}
+                className="flex items-center gap-1.5"
               >
-                {r.nombre}
-              </button>
-            </span>
-          ))}
+                {idx > 0 && (
+                  <span style={{ color: "var(--nv-border-strong)" }}>/</span>
+                )}
+                <button
+                  onClick={() => setRuta(ruta.slice(0, idx))}
+                  disabled={idx === todos.length - 1}
+                  className="font-medium"
+                  style={{
+                    color:
+                      idx === todos.length - 1
+                        ? "var(--nv-text-1)"
+                        : "#2E9BFF",
+                  }}
+                >
+                  {r.nombre}
+                </button>
+              </span>
+            )
+          )}
         </nav>
 
-        <div className="rounded-xl overflow-y-auto" style={{ border: "1px solid var(--nv-border)", maxHeight: "16rem", minHeight: "8rem" }}>
+        <div
+          className="rounded-xl overflow-y-auto"
+          style={{
+            border: "1px solid var(--nv-border)",
+            maxHeight: "16rem",
+            minHeight: "8rem",
+          }}
+        >
           {cargando ? (
-            <p className="text-xs text-center py-10" style={{ color: "var(--nv-text-4)" }}>Cargando carpetas…</p>
-          ) : carpetas.length === 0 ? (
-            <p className="text-xs text-center py-10" style={{ color: "var(--nv-text-4)" }}>No hay subcarpetas aquí.</p>
+            <p
+              className="text-xs text-center py-10"
+              style={{ color: "var(--nv-text-4)" }}
+            >
+              Cargando carpetas...
+            </p>
+          ) : carpetasVisibles.length === 0 ? (
+            <p
+              className="text-xs text-center py-10"
+              style={{ color: "var(--nv-text-4)" }}
+            >
+              No hay subcarpetas aquí.
+            </p>
           ) : (
-            carpetas.map((c) => (
+            carpetasVisibles.map((c) => (
               <button
                 key={c.id_carpeta}
-                onClick={() => setRuta([...ruta, { id_carpeta: c.id_carpeta, nombre: c.nombre }])}
+                onClick={() =>
+                  setRuta([
+                    ...ruta,
+                    {
+                      id_carpeta: c.id_carpeta,
+                      nombre: c.nombre,
+                    },
+                  ])
+                }
                 className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-left transition-colors"
-                style={{ color: "var(--nv-text-2)", borderBottom: "1px solid var(--nv-bg)" }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--nv-bg)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                style={{
+                  color: "var(--nv-text-2)",
+                  borderBottom: "1px solid var(--nv-bg)",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "var(--nv-bg)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "transparent";
+                }}
               >
-                <span style={{ color: "#F59E0B" }}><NavIcon id="folder" size={16} /></span>
+                <span style={{ color: "#F59E0B" }}>
+                  <NavIcon id="folder" size={16} />
+                </span>
                 <span className="flex-1 truncate">{c.nombre}</span>
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M5 3l4 4-4 4" stroke="var(--nv-border-strong)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 14 14"
+                  fill="none"
+                >
+                  <path
+                    d="M5 3l4 4-4 4"
+                    stroke="var(--nv-border-strong)"
+                    strokeWidth="1.4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               </button>
             ))
@@ -556,14 +640,31 @@ function MoveModal({ item, onClose, onMove }: {
         </div>
 
         {mismaCarpeta && (
-          <p className="text-xs" style={{ color: "var(--nv-text-4)" }}>El archivo ya está en esta carpeta.</p>
+          <p className="text-xs" style={{ color: "var(--nv-text-4)" }}>
+            Este elemento ya está en esta carpeta.
+          </p>
         )}
+
+        {destinoInvalido && (
+          <p className="text-xs" style={{ color: "#DC2626" }}>
+            No puedes mover una carpeta dentro de sí misma ni de sus subcarpetas.
+          </p>
+        )}
+
         {error && <MensajeError>{error}</MensajeError>}
-        <BotonesModal onCancel={onClose} onOk={mover} textoOk="Mover aquí" cargando={moviendo} deshabilitado={mismaCarpeta} />
+
+        <BotonesModal
+          onCancel={onClose}
+          onOk={mover}
+          textoOk="Mover aquí"
+          cargando={moviendo}
+          deshabilitado={mismaCarpeta || destinoInvalido || cargando}
+        />
       </div>
     </ModalBase>
   );
 }
+
 
 // ── File/folder card ──────────────────────────────────────────────────────────
 
@@ -892,11 +993,18 @@ export default function FileExplorer({ onLogout, onDashboard, onPlans, onPayment
     showNotif(`"${item.name}" ahora se llama "${nombre}".`);
   }
 
+
   async function mover(item: FsItem, idDestino: string | null, nombreDestino: string) {
-    await almacenamientoApi.moverArchivo(item.id, idDestino);
+    if (item.type === "folder") {
+      await almacenamientoApi.moverCarpeta(item.id, idDestino);
+    } else {
+      await almacenamientoApi.moverArchivo(item.id, idDestino);
+    }
+
     recargar();
     showNotif(`"${item.name}" movido a "${nombreDestino}".`);
   }
+
 
   async function eliminar(item: FsItem) {
     if (item.type === "folder") {

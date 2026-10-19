@@ -179,3 +179,84 @@ def test_no_se_mueve_a_carpeta_ajena(client, almacen, token, token_otro):
     archivo = subir(client, token).json()
     r = client.patch(f"/api/archivos/{archivo['id_archivo']}", json={"id_carpeta": ajena["id_carpeta"]}, headers=auth(token))
     assert r.status_code == 404
+
+# ── Mover carpetas ────────────────────────────────────────────
+
+def test_mover_carpeta_a_otra_ubicacion(client, token):
+    origen = crear_carpeta(client, token, "Origen")
+    destino = crear_carpeta(client, token, "Destino")
+
+    r = client.patch(
+        f"/api/carpetas/{origen['id_carpeta']}/mover",
+        json={"id_carpeta_padre": destino["id_carpeta"]},
+        headers=auth(token),
+    )
+
+    assert r.status_code == 200, r.text
+    assert r.json()["id_carpeta_padre"] == destino["id_carpeta"]
+
+
+def test_mover_carpeta_a_raiz(client, token):
+    padre = crear_carpeta(client, token, "Padre")
+    origen = crear_carpeta(client, token, "Origen", padre=padre["id_carpeta"])
+
+    r = client.patch(
+        f"/api/carpetas/{origen['id_carpeta']}/mover",
+        json={"id_carpeta_padre": None},
+        headers=auth(token),
+    )
+
+    assert r.status_code == 200, r.text
+    assert r.json()["id_carpeta_padre"] is None
+
+
+def test_no_mover_carpeta_a_destino_ajeno(client, token, token_otro):
+    origen = crear_carpeta(client, token, "Origen")
+    ajena = crear_carpeta(client, token_otro, "Privada")
+
+    r = client.patch(
+        f"/api/carpetas/{origen['id_carpeta']}/mover",
+        json={"id_carpeta_padre": ajena["id_carpeta"]},
+        headers=auth(token),
+    )
+
+    assert r.status_code == 404, r.text
+
+
+def test_no_mover_carpeta_dentro_de_si_misma(client, token):
+    origen = crear_carpeta(client, token, "Origen")
+
+    r = client.patch(
+        f"/api/carpetas/{origen['id_carpeta']}/mover",
+        json={"id_carpeta_padre": origen["id_carpeta"]},
+        headers=auth(token),
+    )
+
+    assert r.status_code == 409, r.text
+
+
+def test_no_mover_carpeta_dentro_de_descendiente(client, token):
+    origen = crear_carpeta(client, token, "Origen")
+    hija = crear_carpeta(client, token, "Hija", padre=origen["id_carpeta"])
+
+    r = client.patch(
+        f"/api/carpetas/{origen['id_carpeta']}/mover",
+        json={"id_carpeta_padre": hija["id_carpeta"]},
+        headers=auth(token),
+    )
+
+    assert r.status_code == 409, r.text
+
+
+def test_no_mover_carpeta_si_nombre_duplicado_en_destino(client, token):
+    origen = crear_carpeta(client, token, "Documentos")
+    destino = crear_carpeta(client, token, "Destino")
+    crear_carpeta(client, token, "documentos", padre=destino["id_carpeta"])
+
+    r = client.patch(
+        f"/api/carpetas/{origen['id_carpeta']}/mover",
+        json={"id_carpeta_padre": destino["id_carpeta"]},
+        headers=auth(token),
+    )
+
+    assert r.status_code == 409, r.text
