@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 import { planesApi } from "@/api/planes";
+import AvisoDespertando from "@/components/AvisoDespertando";
 import ProtectedRoute, { PantallaCarga, RUTA_SIN_ACCESO, rutaInicio } from "@/components/routing/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import Landing from "@/pages/Landing";
@@ -117,6 +118,8 @@ export default function App() {
   const nav = useNavCliente();
 
   return (
+    <>
+    <AvisoDespertando />
     <Routes>
       {/* Públicas */}
       <Route path="/" element={<Landing />} />
@@ -150,5 +153,6 @@ export default function App() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   );
 }

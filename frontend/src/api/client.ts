@@ -35,7 +35,7 @@ function mensajeDeError(body: any, status: number): string {
 async function refrescar(): Promise<boolean> {
   // Si varias peticiones fallan al mismo tiempo, solo se hace un refresh
   if (!refrescando) {
-    refrescando = fetch(`${BASE}/auth/refresh`, { method: "POST", credentials: "include" })
+    refrescando = fetchDespierto(`${BASE}/auth/refresh`, { method: "POST", credentials: "include" })
       .then(async (r) => {
         if (!r.ok) return false;
         const data = await r.json();
@@ -60,8 +60,54 @@ const SIN_CONEXION = "No hay conexión con el servidor. ¿Está corriendo el bac
 // renovar la sesión no tendría sentido. El resto de /auth (perfil, sesiones…) sí se renueva.
 const SIN_RENOVAR = /^\/auth\/(login|refresh|logout|registro|verificar-correo|reenviar-verificacion|olvide-contrasena|restablecer-contrasena)(\?|$)/;
 
+// ── API dormida ──────────────────────────────────────────────────────────────
+// En el plan gratis, Render duerme la API tras 15 min sin uso y tarda ~40 s en despertar. Mientras tanto
+// Render (o nginx) responde 502/503/504 con una página HTML: la petición nunca llegó a la API, así que
+// repetirla es seguro aunque sea un POST (login, registro). Los errores de nuestra API siempre son JSON.
 const ESPERANDO_API = [502, 503, 504];
-const REINTENTOS_API = 15; // 15 × 4 s ≈ 1 minuto
+const REINTENTOS_API = 18; // 18 × 4 s ≈ 1 minuto 10 s
+
+function noLlegoALaApi(res: Response): boolean {
+  return ESPERANDO_API.includes(res.status) && !(res.headers.get("content-type") ?? "").includes("application/json");
+}
+
+type OyenteDespertar = (despertando: boolean) => void;
+const oyentesDespertar = new Set<OyenteDespertar>();
+let esperando = 0;
+
+/** Para mostrar "Despertando el servidor…" mientras se espera a la API (ver AvisoDespertando). */
+export function alDespertar(f: OyenteDespertar): () => void {
+  oyentesDespertar.add(f);
+  return () => { oyentesDespertar.delete(f); };
+}
+
+function avisar(delta: number) {
+  const antes = esperando > 0;
+  esperando += delta;
+  if (antes !== esperando > 0) oyentesDespertar.forEach((f) => f(esperando > 0));
+}
+
+/** fetch que, si la API está dormida, espera a que despierte y repite la petición. */
+async function fetchDespierto(url: string, init: RequestInit): Promise<Response> {
+  let res = await fetch(url, init);
+  if (!noLlegoALaApi(res) && !(ESPERANDO_API.includes(res.status) && (init.method ?? "GET") === "GET")) return res;
+  avisar(+1);
+  try {
+    for (let intento = 1; intento <= REINTENTOS_API; intento++) {
+      await new Promise((r) => setTimeout(r, 4000));
+      res = await fetch(url, init);
+      if (!ESPERANDO_API.includes(res.status)) break;
+    }
+    return res;
+  } finally {
+    avisar(-1);
+  }
+}
+
+/** Le pide a la API que despierte apenas se abre la página, mientras el usuario lee o escribe. */
+export function despertarApi() {
+  fetchDespierto(`${BASE}/health`, { method: "GET" }).catch(() => undefined);
+}
 
 /** Hace la petición y, ante un 401, renueva la sesión y la repite una vez. */
 async function enviar(ruta: string, { method = "GET", body, reintentar = true }: Opciones): Promise<Response> {
@@ -73,7 +119,7 @@ async function enviar(ruta: string, { method = "GET", body, reintentar = true }:
 
   let res: Response;
   try {
-    res = await fetch(`${BASE}${ruta}`, {
+    res = await fetchDespierto(`${BASE}${ruta}`, {
       method,
       headers,
       credentials: "include",
@@ -81,17 +127,6 @@ async function enviar(ruta: string, { method = "GET", body, reintentar = true }:
     });
   } catch {
     throw new ApiError(0, SIN_CONEXION);
-  }
-
-  // Render (plan gratis) duerme la API tras 15 min sin uso y tarda ~40 s en despertar; mientras tanto
-  // responde 502/503/504. Las lecturas (GET) se reintentan solas en lugar de mostrar un error.
-  for (let intento = 1; ESPERANDO_API.includes(res.status) && method === "GET" && intento <= REINTENTOS_API; intento++) {
-    await new Promise((r) => setTimeout(r, 4000));
-    try {
-      res = await fetch(`${BASE}${ruta}`, { method, headers, credentials: "include" });
-    } catch {
-      throw new ApiError(0, SIN_CONEXION);
-    }
   }
 
   if (res.status === 401 && reintentar && !SIN_RENOVAR.test(ruta)) {
