@@ -52,6 +52,7 @@ export function NavIcon({ id, size = 20 }: { id: string; size?: number }) {
     "folder-plus": <><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" stroke="currentColor" strokeWidth="1.6" fill="none"/><path d="M12 11v4M10 13h4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></>,
     "sort": <><path d="M3 6h18M7 12h10M11 18h2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></>,
     "chart": <><path d="M3 3v18h18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M7 16l4-5 4 3 4-7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></>,
+    alert: <><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></>,
   };
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -269,6 +270,10 @@ export default function AppShell({
   activeNav, onNav, onLogout, onUpload, headerTitle, headerActions, children,
 }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const { usuario } = useAuth();
+
+  // Verificación en tiempo real si el estado de la suscripción es "vencida"
+  const planVencido = usuario?.suscripcion?.estado === "vencida";
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "#F8FAFC", fontFamily: "'Inter', sans-serif" }}>
@@ -285,7 +290,43 @@ export default function AppShell({
           onUpload={onUpload}
           actions={headerActions}
         />
-        {children}
+
+        {/* Banner de alerta de plan vencido */}
+        {planVencido && (
+          <div
+            className="flex items-center justify-between px-6 py-3 text-sm font-medium flex-shrink-0 animate-fadeIn"
+            style={{
+              background: "#FEF2F2",
+              borderBottom: "1px solid #FCA5A5",
+              color: "#991B1B",
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <span className="flex-shrink-0 text-red-600">
+                <NavIcon id="alert" size={18} />
+              </span>
+              <span>
+                <strong>Tu plan de almacenamiento ha vencido.</strong> Renueva tu suscripción para continuar subiendo archivos y mantener el acceso completo a la nube.
+              </span>
+            </div>
+            <button
+              onClick={() => onNav("plans")}
+              className="ml-4 px-3.5 py-1.5 rounded-lg text-xs font-bold text-white transition-all duration-150 flex-shrink-0"
+              style={{
+                background: "#DC2626",
+                boxShadow: "0 2px 8px rgba(220,38,38,0.25)",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "#B91C1C"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "#DC2626"; }}
+            >
+              Renovar plan
+            </button>
+          </div>
+        )}
+
+        <div className="flex-1 overflow-y-auto min-w-0">
+          {children}
+        </div>
       </div>
     </div>
   );

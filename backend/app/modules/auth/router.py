@@ -9,6 +9,7 @@ from app.modules.auth.models import Usuario
 from app.modules.auth.schemas import (
     CorreoIn, LoginIn, MensajeOut, RegistroIn, RestablecerIn, TokenIn, TokenOut, UsuarioOut,
 )
+from app.modules.suscripciones.service import expirar_suscripciones_vencidas
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
 
@@ -52,6 +53,7 @@ def reenviar_verificacion(datos: CorreoIn, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=TokenOut)
 def login(datos: LoginIn, request: Request, response: Response, db: Session = Depends(get_db)):
+    expirar_suscripciones_vencidas(db)
     usuario = service.autenticar(db, datos.correo, datos.password)
     ip = request.client.host if request.client else None
     access, refresh = service.abrir_sesion(db, usuario, ip, request.headers.get("user-agent"))
@@ -67,6 +69,7 @@ def refresh(
     if not nv_refresh:
         response.delete_cookie(COOKIE_REFRESH, path="/api/auth")
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "No hay sesión activa")
+    expirar_suscripciones_vencidas(db)
     ip = request.client.host if request.client else None
     usuario, access, nuevo = service.renovar_sesion(db, nv_refresh, ip, request.headers.get("user-agent"))
     _poner_cookie(response, nuevo)
