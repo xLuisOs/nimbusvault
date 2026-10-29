@@ -49,3 +49,20 @@ def cambiar_estado(id_plan: UUID, datos: PlanEstado, db: Session = Depends(get_d
 @admin_router.delete("/{id_plan}", status_code=status.HTTP_204_NO_CONTENT)
 def eliminar(id_plan: UUID, db: Session = Depends(get_db)):
     service.eliminar(db, id_plan)
+    # Endpoint to recalculate quota for all subscriptions
+    @admin_router.post("/recalculo-cuota", response_model=dict)
+    def recalculo_cuota(db: Session = Depends(get_db)):
+        """Recalcula la cuota de suscripciones sin modificar el esquema.
+        Por ahora actualiza `precio_contratado` al precio actual del plan.
+        """
+        from sqlalchemy import select
+        from app.modules.suscripciones.models import Suscripcion
+        suscripciones = db.scalars(select(Suscripcion)).all()
+        updated = 0
+        for sus in suscripciones:
+            if sus.precio_contratado != sus.plan.precio_mensual:
+                sus.precio_contratado = sus.plan.precio_mensual
+                updated += 1
+        if updated:
+            db.commit()
+        return {"updated": updated}
