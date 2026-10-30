@@ -260,3 +260,23 @@ def test_no_mover_carpeta_si_nombre_duplicado_en_destino(client, token):
     )
 
     assert r.status_code == 409, r.text
+
+def test_no_mover_carpeta_a_destino_inexistente(client, token):
+    origen = crear_carpeta(client, token, "Origen")
+
+    r = client.patch(
+        f"/api/carpetas/{origen['id_carpeta']}/mover",
+        json={"id_carpeta_padre": "00000000-0000-0000-0000-000000000001"},
+        headers=auth(token),
+    )
+
+    assert r.status_code == 404
+
+    # La carpeta debe conservar su ubicación original en la raíz.
+    ruta = client.get(
+        f"/api/carpetas/{origen['id_carpeta']}/ruta",
+        headers=auth(token),
+    )
+
+    assert ruta.status_code == 200
+    assert [c["nombre"] for c in ruta.json()] == ["Origen"]
