@@ -2,7 +2,9 @@ import { useState } from "react";
 import { usePlanes } from "@/api/planes";
 import type { Plan } from "@/types";
 import { formatoGB, formatoDolares } from "@/utils/format";
-
+import AppShell from "@/components/layout/AppShell";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 // ── Data ──────────────────────────────────────────────────────────────────────
 // El catálogo viene de la API (GET /api/planes). Aquí solo lo adaptamos a lo que dibujan las tarjetas.
 
@@ -504,9 +506,26 @@ interface PlansProps {
   onLogin: () => void;
   onSignUp: () => void;
   onCheckout: (codigo: string, annual: boolean) => void;
+  inPanel?: boolean;
 }
 
-export default function Plans({ onHome, onLogin, onSignUp, onCheckout }: PlansProps) {
+export default function Plans({ onHome, onLogin, onSignUp, onCheckout, inPanel = false, }: PlansProps) {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+
+  function handleNav(id: string) {
+    const rutas: Record<string, string> = {
+      dashboard: "/dashboard",
+      files: "/archivos",
+      consumption: "/consumo",
+      plans: "/cliente/planes",
+      payments: "/pagos",
+      settings: "/configuracion",
+    };
+
+    const ruta = rutas[id];
+    if (ruta) navigate(ruta);
+  }
   const [annual, setAnnual] = useState(false);
   const { planes, cargando, error } = usePlanes();
   const PLANS = planes.map(aVista);
@@ -514,14 +533,25 @@ export default function Plans({ onHome, onLogin, onSignUp, onCheckout }: PlansPr
   function handleSelect(id: string) {
     const p = PLANS.find((x) => x.id === id);
     if (!p) return;
-    if (p.price === 0) { onSignUp(); return; }
+    if (p.price === 0) {
+      if (!inPanel) onSignUp();
+      return;
+    }
     // El checkout vuelve a pedir el plan a la API: no se confía en el precio que trae el navegador
     onCheckout(p.id, annual);
   }
-
-  return (
-    <div className="min-h-screen" style={{ background: "#F8FAFC" }}>
-      <Header onHome={onHome} onLogin={onLogin} onSignUp={onSignUp} />
+  const contenido = (
+    <div
+      className={inPanel ? "min-h-full" : "min-h-screen"}
+      style={{ background: "#F8FAFC" }}
+    >
+      {!inPanel && (
+        <Header
+          onHome={onHome}
+          onLogin={onLogin}
+          onSignUp={onSignUp}
+        />
+      )}
 
       {/* Hero */}
       <section className="pt-20 pb-16 text-center px-6">
@@ -531,9 +561,13 @@ export default function Plans({ onHome, onLogin, onSignUp, onCheckout }: PlansPr
         >
           Planes y precios
         </p>
+
         <h1
           className="text-4xl md:text-5xl font-extrabold leading-tight mb-4 max-w-2xl mx-auto"
-          style={{ color: "#0F172A", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+          style={{
+            color: "#0F172A",
+            fontFamily: "'Plus Jakarta Sans', sans-serif",
+          }}
         >
           Elige el plan que{" "}
           <span
@@ -547,29 +581,58 @@ export default function Plans({ onHome, onLogin, onSignUp, onCheckout }: PlansPr
             se ajuste a ti
           </span>
         </h1>
+
         <p
           className="text-base mb-10 max-w-lg mx-auto"
           style={{ color: "#64748B" }}
         >
           Sin costes ocultos. Cancela cuando quieras. Empieza gratis hoy mismo.
         </p>
-        <BillingToggle annual={annual} onChange={setAnnual} descuento={etiquetaDescuento(PLANS)} />
+
+        <BillingToggle
+          annual={annual}
+          onChange={setAnnual}
+          descuento={etiquetaDescuento(PLANS)}
+        />
       </section>
 
       {/* Cards */}
       <section className="max-w-6xl mx-auto px-6 pb-24">
-        {cargando && <p className="text-center text-sm py-16" style={{ color: "#94A3B8" }}>Cargando planes…</p>}
+        {cargando && (
+          <p
+            className="text-center text-sm py-16"
+            style={{ color: "#94A3B8" }}
+          >
+            Cargando planes…
+          </p>
+        )}
+
         {error && (
-          <p className="text-center text-sm py-16 font-semibold" style={{ color: "#E5484D" }}>
+          <p
+            className="text-center text-sm py-16 font-semibold"
+            style={{ color: "#E5484D" }}
+          >
             No se pudieron cargar los planes: {error}
           </p>
         )}
+
         {!cargando && !error && PLANS.length === 0 && (
-          <p className="text-center text-sm py-16" style={{ color: "#94A3B8" }}>Aún no hay planes disponibles.</p>
+          <p
+            className="text-center text-sm py-16"
+            style={{ color: "#94A3B8" }}
+          >
+            Aún no hay planes disponibles.
+          </p>
         )}
+
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 items-end pt-6">
           {PLANS.map((plan) => (
-            <PlanCard key={plan.id} plan={plan} annual={annual} onSelect={handleSelect} />
+            <PlanCard
+              key={plan.id}
+              plan={plan}
+              annual={annual}
+              onSelect={handleSelect}
+            />
           ))}
         </div>
 
@@ -596,44 +659,77 @@ export default function Plans({ onHome, onLogin, onSignUp, onCheckout }: PlansPr
       <ComparisonTable plans={PLANS} />
       <FAQ />
 
-      {/* CTA footer */}
-      <section
-        className="py-16 text-center px-6"
-        style={{
-          background: "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)",
-        }}
-      >
-        <h2
-          className="text-2xl font-extrabold mb-3 text-white"
-          style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-        >
-          ¿Todavía no te decides?
-        </h2>
-        <p className="text-sm mb-7" style={{ color: "#94A3B8" }}>
-          Empieza con el plan Gratis y cambia cuando lo necesites. Sin tarjeta de crédito.
-        </p>
-        <button
-          onClick={onSignUp}
-          className="inline-flex items-center gap-2 text-sm font-bold px-8 py-3.5 rounded-xl text-white transition-all duration-150"
+      {/* CTA footer: solo en la página pública */}
+      {!inPanel && (
+        <section
+          className="py-16 text-center px-6"
           style={{
-            background: "linear-gradient(135deg, #2E9BFF 0%, #00D1C1 100%)",
-            boxShadow: "0 4px 20px rgba(46,155,255,0.35)",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "translateY(-1px)";
-            e.currentTarget.style.boxShadow = "0 8px 28px rgba(46,155,255,0.5)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "translateY(0)";
-            e.currentTarget.style.boxShadow = "0 4px 20px rgba(46,155,255,0.35)";
+            background: "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)",
           }}
         >
-          Crear cuenta gratis
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M3 8h10M9 4l4 4-4 4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-      </section>
+          <h2
+            className="text-2xl font-extrabold mb-3 text-white"
+            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+          >
+            ¿Todavía no te decides?
+          </h2>
+
+          <p className="text-sm mb-7" style={{ color: "#94A3B8" }}>
+            Empieza con el plan Gratis y cambia cuando lo necesites. Sin tarjeta de crédito.
+          </p>
+
+          <button
+            onClick={onSignUp}
+            className="inline-flex items-center gap-2 text-sm font-bold px-8 py-3.5 rounded-xl text-white transition-all duration-150"
+            style={{
+              background: "linear-gradient(135deg, #2E9BFF 0%, #00D1C1 100%)",
+              boxShadow: "0 4px 20px rgba(46,155,255,0.35)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "translateY(-1px)";
+              e.currentTarget.style.boxShadow =
+                "0 8px 28px rgba(46,155,255,0.5)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow =
+                "0 4px 20px rgba(46,155,255,0.35)";
+            }}
+          >
+            Crear cuenta gratis
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path
+                d="M3 8h10M9 4l4 4-4 4"
+                stroke="white"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        </section>
+      )}
     </div>
+  );
+
+  if (!inPanel) {
+    return contenido;
+  }
+
+  return (
+    <AppShell
+      activeNav="plans"
+      onNav={handleNav}
+      onLogout={async () => {
+        await logout();
+        navigate("/");
+      }}
+      onUpload={() => navigate("/archivos")}
+      headerTitle="Planes y precios"
+    >
+      <main className="flex-1 overflow-y-auto">
+        {contenido}
+      </main>
+    </AppShell>
   );
 }
