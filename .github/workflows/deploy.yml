@@ -1,0 +1,24 @@
+name: Deploy a producción
+
+# Se ejecuta solo con push o merge a main
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Descargar el código del repo
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. Verificar que la imagen Docker construye correctamente
+      #    (si falla aquí, no se despliega nada)
+      - name: Construir imagen Docker
+        working-directory: backend
+        run: docker build -t nimbusvault-api .
+
+      # 3. Disparar el despliegue en Render mediante el deploy hook
+      - name: Desplegar en Render
+        run: curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
