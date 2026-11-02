@@ -527,7 +527,7 @@ export default function Plans({ onHome, onLogin, onSignUp, onCheckout, inPanel =
     if (ruta) navigate(ruta);
   }
   const [annual, setAnnual] = useState(false);
-  const { planes, cargando, error } = usePlanes();
+  const { planes, cargando, error, reintentar } = usePlanes();
   const PLANS = planes.map(aVista);
 
   function handleSelect(id: string) {
@@ -608,12 +608,17 @@ export default function Plans({ onHome, onLogin, onSignUp, onCheckout, inPanel =
         )}
 
         {error && (
-          <p
-            className="text-center text-sm py-16 font-semibold"
-            style={{ color: "#E5484D" }}
-          >
-            No se pudieron cargar los planes: {error}
-          </p>
+          <div className="text-center py-16">
+            <p className="text-sm font-semibold mb-3" style={{ color: "#E5484D" }}>
+              No se pudieron cargar los planes: {error}
+            </p>
+            <p className="text-xs mb-4" style={{ color: "#94A3B8" }}>
+              El servidor puede estar despertando: lo intentamos de nuevo en unos segundos.
+            </p>
+            <button onClick={reintentar} className="text-sm font-bold px-5 py-2 rounded-xl text-white" style={{ background: "#2E9BFF" }}>
+              Reintentar ahora
+            </button>
+          </div>
         )}
 
         {!cargando && !error && PLANS.length === 0 && (

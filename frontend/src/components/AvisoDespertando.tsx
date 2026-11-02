@@ -23,7 +23,7 @@ export default function AvisoDespertando() {
       <span>
         Despertando el servidor, un momento…
         <span className="block text-[11px] font-normal" style={{ color: "rgba(255,255,255,0.65)" }}>
-          Si llevaba un rato sin uso tarda hasta un minuto.
+          Si llevaba un rato sin uso puede tardar uno o dos minutos.
         </span>
       </span>
     </div>
