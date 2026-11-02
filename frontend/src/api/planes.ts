@@ -16,21 +16,34 @@ export const planesApi = {
   eliminar: (id: string) => api<void>(`/admin/planes/${id}`, { method: "DELETE" }),
 };
 
+// Si la API tardó demasiado en despertar, se vuelve a intentar sola cada 20 s (además del botón "Reintentar")
+const REINTENTO_AUTOMATICO_MS = 20_000;
+
 /** Catálogo público para el landing y la página de planes. */
 export function usePlanes() {
   const [planes, setPlanes] = useState<Plan[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [intento, setIntento] = useState(0);
 
   useEffect(() => {
     let vivo = true;
+    setCargando(true);
+    setError(null);
     planesApi
       .listar()
       .then((p) => vivo && setPlanes(p))
       .catch((e) => vivo && setError(e.message))
       .finally(() => vivo && setCargando(false));
     return () => { vivo = false; };
-  }, []);
+  }, [intento]);
 
-  return { planes, cargando, error };
+  useEffect(() => {
+    if (!error) return;
+    const t = setTimeout(() => setIntento((n) => n + 1), REINTENTO_AUTOMATICO_MS);
+    return () => clearTimeout(t);
+  }, [error]);
+
+  const reintentar = () => setIntento((n) => n + 1);
+  return { planes, cargando, error, reintentar };
 }

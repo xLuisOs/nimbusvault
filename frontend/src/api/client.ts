@@ -65,7 +65,8 @@ const SIN_RENOVAR = /^\/auth\/(login|refresh|logout|registro|verificar-correo|re
 // Render (o nginx) responde 502/503/504 con una página HTML: la petición nunca llegó a la API, así que
 // repetirla es seguro aunque sea un POST (login, registro). Los errores de nuestra API siempre son JSON.
 const ESPERANDO_API = [502, 503, 504];
-const REINTENTOS_API = 18; // 18 × 4 s ≈ 1 minuto 10 s
+// Despertar puede pasar de 1 minuto (sobre todo tras un despliegue: corre migraciones y seed al arrancar)
+const REINTENTOS_API = 45; // 45 × 4 s = 3 minutos
 
 function noLlegoALaApi(res: Response): boolean {
   return ESPERANDO_API.includes(res.status) && !(res.headers.get("content-type") ?? "").includes("application/json");

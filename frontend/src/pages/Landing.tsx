@@ -588,7 +588,7 @@ function About() {
 // ── Pricing ──────────────────────────────────────────────────────────────────
 
 function Pricing({ onSignUp, onPlans }: { onSignUp: () => void; onPlans: () => void }) {
-  const { planes, cargando, error } = usePlanes();
+  const { planes, cargando, error, reintentar } = usePlanes();
   const PLANS = planes.map((p) => {
     const gratis = Number(p.precio_mensual) === 0;
     return {
@@ -622,7 +622,16 @@ function Pricing({ onSignUp, onPlans }: { onSignUp: () => void; onPlans: () => v
         </div>
 
         {cargando && <p className="text-center text-sm" style={{ color: "#64748B" }}>Cargando planes…</p>}
-        {error && <p className="text-center text-sm font-semibold" style={{ color: "#E5484D" }}>No se pudieron cargar los planes.</p>}
+        {error && (
+          <div className="text-center">
+            <p className="text-sm font-semibold mb-3" style={{ color: "#E5484D" }}>
+              No se pudieron cargar los planes. El servidor puede estar despertando: lo intentamos de nuevo en unos segundos.
+            </p>
+            <button onClick={reintentar} className="text-sm font-bold px-5 py-2 rounded-xl text-white" style={{ background: "#2E9BFF" }}>
+              Reintentar ahora
+            </button>
+          </div>
+        )}
         {!cargando && !error && PLANS.length === 0 && (
           <p className="text-center text-sm" style={{ color: "#64748B" }}>Aún no hay planes disponibles.</p>
         )}
