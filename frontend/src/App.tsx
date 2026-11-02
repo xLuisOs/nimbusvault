@@ -31,7 +31,7 @@ function useNavCliente() {
     onLogout: async () => { await logout(); navigate("/"); },
     onDashboard: () => navigate("/dashboard"),
     onFiles: () => navigate("/archivos"),
-    onPlans: () => navigate("/planes"),
+    onPlans: () => navigate("/cliente/planes"),
     onPayments: () => navigate("/pagos"),
     onConsumption: () => navigate("/consumo"),
   };
@@ -75,11 +75,34 @@ function PlansRoute() {
   );
 }
 
+function ClientePlansRoute() {
+  const navigate = useNavigate();
+  const nav = useNavCliente();
+
+  return (
+    <Plans
+      inPanel
+      onHome={() => navigate("/dashboard")}
+      onLogin={() => navigate("/login")}
+      onSignUp={() => navigate("/dashboard")}
+      onCheckout={(codigo, annual) => {
+        const destino =
+          `/checkout?plan=${encodeURIComponent(codigo)}` +
+          `${annual ? "&periodo=anual" : ""}&origen=cliente`;
+
+        navigate(destino);
+      }}
+    />
+  );
+}
+
 function CheckoutRoute() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const codigo = params.get("plan");
   const annual = params.get("periodo") === "anual";
+  const origenCliente = params.get("origen") === "cliente";
+  const rutaPlanes = origenCliente ? "/cliente/planes" : "/planes";
   const [plan, setPlan] = useState<CheckoutPlan | null>(null);
   const [invalido, setInvalido] = useState(!codigo);
 
@@ -95,12 +118,14 @@ function CheckoutRoute() {
   }, [codigo, annual]);
 
   // Plan inexistente, inactivo o gratuito (el gratis no se paga): de vuelta al catálogo
-  if (invalido || (plan && plan.price === 0)) return <Navigate to="/planes" replace />;
+  if (invalido || (plan && plan.price === 0)) {
+    return <Navigate to={rutaPlanes} replace />;
+  }
   if (!plan) return <PantallaCarga />;
   return (
     <Checkout
       plan={plan}
-      onBack={() => navigate("/planes")}
+      onBack={() => navigate(rutaPlanes)}
       onDashboard={() => navigate("/dashboard")}
       onPayments={() => navigate("/pagos")}
     />
@@ -132,6 +157,10 @@ export default function App() {
 
       {/* Cliente */}
       <Route element={<ProtectedRoute roles={["CLIENTE"]} />}>
+        <Route
+          path="/cliente/planes"
+          element={<ClientePlansRoute />}
+        />
         <Route path="/dashboard" element={<Dashboard {...nav} />} />
         <Route path="/archivos" element={<FileExplorer {...nav} />} />
         <Route path="/pagos" element={<Payments {...nav} />} />

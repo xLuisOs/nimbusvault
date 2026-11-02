@@ -144,7 +144,12 @@ def _consulta_pagos(usuario: Usuario):
 
 
 def listar_pagos(db: Session, usuario: Usuario) -> list[PagoOut]:
-    filas = db.execute(_consulta_pagos(usuario).order_by(Pago.fecha_pago.desc()))
+    filas = db.execute(
+        _consulta_pagos(usuario).order_by(
+            Pago.fecha_pago.desc(),
+            Pago.id_pago.desc(),
+        )
+    )
     return [_a_schema(p, s, pl) for p, s, pl in filas]
 
 
