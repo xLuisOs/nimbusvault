@@ -114,10 +114,16 @@ class AlmacenS3:
         if self._use_supabase_rest:
             try:
                 fileobj.seek(0)
-                headers = {"Authorization": f"Bearer {settings.s3_secret_key}", "apikey": settings.s3_secret_key}
-                files = {"file": (clave, fileobj, tipo_mime)}
+                headers = {
+                    "Authorization": f"Bearer {settings.s3_secret_key}",
+                    "apikey": settings.s3_secret_key,
+                    "Content-Type": tipo_mime,
+                }
                 url = f"{self._supabase_rest_base}/object/{self.bucket}/{clave}"
-                r = requests.post(url, headers=headers, files=files, timeout=60)
+                # El archivo va como cuerpo crudo, leído en partes desde el temporal: con `files=` (multipart)
+                # requests armaba en memoria una copia completa antes de enviar, y con el poco CPU del plan
+                # gratis de Render eso sumaba segundos a cada subida grande.
+                r = requests.post(url, headers=headers, data=fileobj, timeout=60)
                 if r.status_code >= 400:
                     log.error("Falló la subida REST de %s: %s %s", clave, r.status_code, r.text)
                     raise ErrorAlmacen("No se pudo guardar el archivo en el almacenamiento (supabase)")
