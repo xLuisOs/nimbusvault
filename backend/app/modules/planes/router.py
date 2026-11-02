@@ -1,10 +1,13 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.deps import requiere_admin
 from app.db.session import get_db
+from app.modules.almacenamiento.models import Archivo
+from app.modules.auth.models import Usuario
 from app.modules.planes import service
 from app.modules.planes.schemas import PlanActualizar, PlanAdminOut, PlanCrear, PlanEstado, PlanOut
 
@@ -49,3 +52,40 @@ def cambiar_estado(id_plan: UUID, datos: PlanEstado, db: Session = Depends(get_d
 @admin_router.delete("/{id_plan}", status_code=status.HTTP_204_NO_CONTENT)
 def eliminar(id_plan: UUID, db: Session = Depends(get_db)):
     service.eliminar(db, id_plan)
+
+
+@admin_router.post("/recalculo-cuota", response_model=dict)
+def recalcular_cuota(db: Session = Depends(get_db)):
+    """Recalcula `almacenamiento_usado_bytes` de cada usuario sumando el
+    `tamano_bytes` de sus archivos activos (excluye los de la papelera).
+
+    No modifica `precio_contratado` de suscripciones.
+    """
+    # Uso real por usuario: solo archivos no eliminados
+    subq = (
+        select(
+            Archivo.id_usuario,
+            func.coalesce(func.sum(Archivo.tamano_bytes), 0).label("uso"),
+        )
+        .where(Archivo.eliminado_en.is_(None))
+        .group_by(Archivo.id_usuario)
+        .subquery()
+    )
+
+    usuarios = db.scalars(select(Usuario)).all()
+    actualizados = 0
+    for usuario in usuarios:
+        uso = (
+            db.scalar(
+                select(subq.c.uso).where(subq.c.id_usuario == usuario.id_usuario)
+            )
+            or 0
+        )
+        if usuario.almacenamiento_usado_bytes != uso:
+            usuario.almacenamiento_usado_bytes = uso
+            actualizados += 1
+
+    if actualizados:
+        db.commit()
+
+    return {"actualizados": actualizados}
