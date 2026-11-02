@@ -1,17 +1,42 @@
 import { useState } from "react";
 
-import { formatoDolares } from "@/utils/format";
+import { pagosApi } from "@/api/pagos";
+import { useAuth } from "@/context/AuthContext";
+import type { Pago, Plan } from "@/types";
+import { guardarBlob } from "@/utils/archivos";
+import { formatoDolares, formatoFecha, formatoGB } from "@/utils/format";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface CheckoutPlan {
-  id: string;
+  id: string; // código del plan
+  idPlan: string;
   name: string;
   storage: string;
-  price: number;
+  price: number; // mensual, o mensualizado con descuento si es anual
   annual: boolean;
+  discountPct: number;
+  vigencia: number; // días que dura el ciclo mensual
+  features: string[];
   color: string;
   colorBg: string;
+}
+
+/** Adapta el plan de la API (GET /api/planes/{codigo}) a lo que dibuja el checkout. */
+export function aCheckoutPlan(p: Plan, annual: boolean): CheckoutPlan {
+  return {
+    id: p.codigo,
+    idPlan: p.id_plan,
+    name: p.nombre,
+    storage: formatoGB(p.almacenamiento_gb),
+    price: Number(annual ? p.precio_anual_mensualizado : p.precio_mensual),
+    annual,
+    discountPct: p.descuento_anual_pct,
+    vigencia: p.vigencia_dias,
+    features: p.caracteristicas,
+    color: p.color,
+    colorBg: p.color + "14", // mismo color con ~8 % de opacidad
+  };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -34,9 +59,14 @@ function startDate() {
   return new Date().toLocaleDateString("es-GT", { day: "numeric", month: "long", year: "numeric" });
 }
 
-function nextBillingDate(annual: boolean) {
+/** Lo que se cobra hoy: el mes, o los 12 meses con descuento si es anual. */
+function totalACobrar(plan: CheckoutPlan) {
+  return plan.annual ? `${formatoDolares(plan.price * 12)} al año` : `${formatoDolares(plan.price)}/mes`;
+}
+
+function nextBillingDate(annual: boolean, vigenciaDias: number) {
   const d = new Date();
-  annual ? d.setFullYear(d.getFullYear() + 1) : d.setMonth(d.getMonth() + 1);
+  annual ? d.setFullYear(d.getFullYear() + 1) : d.setDate(d.getDate() + vigenciaDias);
   return d.toLocaleDateString("es-GT", { day: "numeric", month: "long", year: "numeric" });
 }
 
@@ -199,7 +229,7 @@ function PlanSummary({ plan }: { plan: CheckoutPlan }) {
                   className="text-[10px] font-bold px-2 py-0.5 rounded-full"
                   style={{ background: "#E0FBF9", color: "#00C896" }}
                 >
-                  Anual −20%
+                  Anual −{plan.discountPct}%
                 </span>
               )}
             </div>
@@ -236,7 +266,7 @@ function PlanSummary({ plan }: { plan: CheckoutPlan }) {
         >
           {[
             { label: "Fecha de inicio", value: startDate() },
-            { label: "Próxima factura", value: nextBillingDate(plan.annual) },
+            { label: "Próxima factura", value: nextBillingDate(plan.annual, plan.vigencia) },
             { label: "Ciclo de facturación", value: plan.annual ? "Anual" : "Mensual" },
           ].map(({ label, value }) => (
             <div key={label} className="flex items-center justify-between">
@@ -254,7 +284,7 @@ function PlanSummary({ plan }: { plan: CheckoutPlan }) {
 
 interface PaymentFormProps {
   plan: CheckoutPlan;
-  onConfirm: () => void;
+  onConfirm: (pago: Pago) => void;
 }
 
 function PaymentForm({ plan, onConfirm }: PaymentFormProps) {
@@ -263,6 +293,7 @@ function PaymentForm({ plan, onConfirm }: PaymentFormProps) {
   const [cvv, setCvv] = useState("");
   const [name, setName] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errorApi, setErrorApi] = useState("");
   const [loading, setLoading] = useState(false);
 
   const brand = cardBrand(cardNumber);
@@ -274,19 +305,40 @@ function PaymentForm({ plan, onConfirm }: PaymentFormProps) {
     else if (digits.length < 16) e.card = "El número debe tener 16 dígitos.";
     if (!expiry) e.expiry = "Ingresa la fecha de vencimiento.";
     else if (expiry.length < 5) e.expiry = "Formato MM/AA.";
+    else {
+      const [mes, anio] = expiry.split("/").map(Number);
+      const hoy = new Date();
+      if (mes < 1 || mes > 12) e.expiry = "Mes inválido.";
+      else if (2000 + anio < hoy.getFullYear() || (2000 + anio === hoy.getFullYear() && mes < hoy.getMonth() + 1))
+        e.expiry = "La tarjeta está vencida.";
+    }
     if (!cvv) e.cvv = "Ingresa el CVV.";
     else if (cvv.length < 3) e.cvv = "CVV inválido.";
     if (!name.trim()) e.name = "Ingresa el nombre del titular.";
     return e;
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const errs = validate();
     setErrors(errs);
+    setErrorApi("");
     if (Object.keys(errs).length > 0) return;
     setLoading(true);
-    setTimeout(() => { setLoading(false); onConfirm(); }, 1400);
+    try {
+      // Solo viaja al backend; allí se descarta todo menos la marca y los últimos 4 dígitos
+      const pago = await pagosApi.contratar(plan.idPlan, plan.annual ? "anual" : "mensual", {
+        numero: cardNumber.replace(/\s/g, ""),
+        titular: name.trim(),
+        vencimiento: expiry,
+        cvv,
+      });
+      onConfirm(pago);
+    } catch (err) {
+      // p. ej. 409: ya tienes este plan o tus archivos no caben en él
+      setErrorApi((err as Error).message);
+      setLoading(false);
+    }
   }
 
   return (
@@ -373,6 +425,19 @@ function PaymentForm({ plan, onConfirm }: PaymentFormProps) {
         </span>
       </div>
 
+      {errorApi && (
+        <div
+          className="flex items-start gap-2.5 rounded-xl px-4 py-3 text-sm font-medium"
+          style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#DC2626" }}
+        >
+          <svg width="16" height="16" viewBox="0 0 13 13" fill="none" className="flex-shrink-0 mt-0.5">
+            <circle cx="6.5" cy="6.5" r="5.5" stroke="#DC2626" strokeWidth="1.3" />
+            <path d="M6.5 3.5v3M6.5 8.5v.5" stroke="#DC2626" strokeWidth="1.3" strokeLinecap="round" />
+          </svg>
+          {errorApi}
+        </div>
+      )}
+
       {/* Submit */}
       <button
         type="submit"
@@ -411,7 +476,7 @@ function PaymentForm({ plan, onConfirm }: PaymentFormProps) {
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M2 5h12v8a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5ZM2 5V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1M6 9h4" stroke="white" strokeWidth="1.4" strokeLinecap="round" />
             </svg>
-            Confirmar pago simulado — {formatoDolares(plan.price)}/mes
+            Confirmar pago simulado — {totalACobrar(plan)}
           </>
         )}
       </button>
@@ -434,11 +499,26 @@ function PaymentForm({ plan, onConfirm }: PaymentFormProps) {
 
 interface SuccessProps {
   plan: CheckoutPlan;
+  pago: Pago;
   onDashboard: () => void;
+  onPayments: () => void;
 }
 
-function SuccessState({ plan, onDashboard }: SuccessProps) {
-  const displayPrice = formatoDolares(plan.price);
+function SuccessState({ plan, pago, onDashboard, onPayments }: SuccessProps) {
+  const [descargando, setDescargando] = useState(false);
+  const [errorPdf, setErrorPdf] = useState("");
+
+  async function descargarComprobante() {
+    setDescargando(true);
+    setErrorPdf("");
+    try {
+      guardarBlob(await pagosApi.comprobante(pago.id_pago), `comprobante-${pago.numero_comprobante}.pdf`);
+    } catch (e) {
+      setErrorPdf((e as Error).message);
+    } finally {
+      setDescargando(false);
+    }
+  }
 
   return (
     <div className="flex flex-col items-center text-center gap-6">
@@ -489,11 +569,14 @@ function SuccessState({ plan, onDashboard }: SuccessProps) {
       >
         <div className="h-1" style={{ background: `linear-gradient(90deg, ${plan.color}, #00D1C1)` }} />
         <div className="px-6 py-5">
+          <p className="text-xs mb-4" style={{ color: "#94A3B8" }}>
+            Comprobante <span className="font-bold font-mono" style={{ color: "#334155" }}>{pago.numero_comprobante}</span>
+          </p>
           <div className="grid grid-cols-3 gap-4">
             {[
               { label: "Plan", value: plan.name },
               { label: "Almacenamiento", value: plan.storage },
-              { label: "Monto", value: `${displayPrice}/mes (simulado)` },
+              { label: "Pagado", value: `${formatoDolares(pago.monto)} (simulado)` },
             ].map(({ label, value }) => (
               <div key={label} className="text-center">
                 <p className="text-xs mb-1" style={{ color: "#94A3B8" }}>{label}</p>
@@ -513,9 +596,9 @@ function SuccessState({ plan, onDashboard }: SuccessProps) {
           Próximos pasos
         </p>
         {[
-          "Recibirás un correo de confirmación en breve",
-          "Tu panel está listo para subir archivos",
-          "Invita colaboradores desde Configuración → Usuarios",
+          `Tu espacio ya es de ${plan.storage}: puedes subir archivos desde "Mis archivos"`,
+          `El comprobante ${pago.numero_comprobante} quedó en tu historial de pagos`,
+          `Tu plan está vigente hasta el ${formatoFecha(pago.vigencia_fin)}`,
         ].map((step, i) => (
           <div key={i} className="flex items-start gap-2.5">
             <div
@@ -552,10 +635,29 @@ function SuccessState({ plan, onDashboard }: SuccessProps) {
         </svg>
       </button>
 
+      <div className="w-full grid grid-cols-2 gap-3 -mt-2">
+        <button
+          onClick={descargarComprobante}
+          disabled={descargando}
+          className="py-3 rounded-xl text-xs font-bold transition-colors"
+          style={{ color: "#2E9BFF", border: "1.5px solid #2E9BFF", background: "white" }}
+        >
+          {descargando ? "Descargando…" : "Descargar comprobante (PDF)"}
+        </button>
+        <button
+          onClick={onPayments}
+          className="py-3 rounded-xl text-xs font-bold transition-colors"
+          style={{ color: "#334155", background: "#F1F5F9" }}
+        >
+          Ver historial de pagos
+        </button>
+      </div>
+      {errorPdf && <p className="text-xs font-medium" style={{ color: "#DC2626" }}>{errorPdf}</p>}
+
       <p className="text-xs" style={{ color: "#94A3B8" }}>
-        Próxima factura el{" "}
+        Vigente hasta el{" "}
         <span className="font-semibold" style={{ color: "#64748B" }}>
-          {nextBillingDate(plan.annual)}
+          {formatoFecha(pago.vigencia_fin)}
         </span>
       </p>
     </div>
@@ -568,10 +670,18 @@ interface CheckoutProps {
   plan: CheckoutPlan;
   onBack: () => void;
   onDashboard: () => void;
+  onPayments: () => void;
 }
 
-export default function Checkout({ plan, onBack, onDashboard }: CheckoutProps) {
-  const [confirmed, setConfirmed] = useState(false);
+export default function Checkout({ plan, onBack, onDashboard, onPayments }: CheckoutProps) {
+  const { recargarUsuario } = useAuth();
+  const [pago, setPago] = useState<Pago | null>(null);
+
+  function handleConfirm(nuevo: Pago) {
+    setPago(nuevo);
+    // El plan, la cuota y la vigencia del usuario cambiaron: se refresca la sesión
+    recargarUsuario().catch(() => undefined);
+  }
 
   return (
     <div
@@ -599,7 +709,7 @@ export default function Checkout({ plan, onBack, onDashboard }: CheckoutProps) {
       >
         <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
           <Logo onClick={onBack} />
-          {!confirmed && (
+          {!pago && (
             <button
               onClick={onBack}
               className="flex items-center gap-1.5 text-sm font-medium transition-colors duration-150"
@@ -617,7 +727,7 @@ export default function Checkout({ plan, onBack, onDashboard }: CheckoutProps) {
       </header>
 
       {/* Page title */}
-      {!confirmed && (
+      {!pago && (
         <div className="text-center pt-10 pb-2 px-4">
           <div className="flex items-center justify-center gap-2 mb-3">
             {[1, 2, 3].map((s) => (
@@ -660,7 +770,7 @@ export default function Checkout({ plan, onBack, onDashboard }: CheckoutProps) {
 
       {/* Main content */}
       <main className="max-w-4xl mx-auto px-4 py-10">
-        {confirmed ? (
+        {pago ? (
           /* ── Success ── */
           <div className="max-w-md mx-auto">
             <div
@@ -671,7 +781,7 @@ export default function Checkout({ plan, onBack, onDashboard }: CheckoutProps) {
                 boxShadow: "0 8px 40px rgba(14,30,60,0.08)",
               }}
             >
-              <SuccessState plan={plan} onDashboard={onDashboard} />
+              <SuccessState plan={plan} pago={pago} onDashboard={onDashboard} onPayments={onPayments} />
             </div>
           </div>
         ) : (
@@ -693,13 +803,7 @@ export default function Checkout({ plan, onBack, onDashboard }: CheckoutProps) {
                   Incluido en tu plan
                 </p>
                 <ul className="flex flex-col gap-2.5">
-                  {[
-                    "Almacenamiento " + plan.storage,
-                    "SSL y cifrado en reposo",
-                    "Backups automáticos diarios",
-                    "Panel de control completo",
-                    "Soporte por correo",
-                  ].map((f) => (
+                  {plan.features.map((f) => (
                     <li key={f} className="flex items-center gap-2.5 text-sm" style={{ color: "#334155" }}>
                       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="flex-shrink-0">
                         <circle cx="8" cy="8" r="7" fill="#00C896" fillOpacity="0.15" />
@@ -721,7 +825,7 @@ export default function Checkout({ plan, onBack, onDashboard }: CheckoutProps) {
                 boxShadow: "0 4px 24px rgba(14,30,60,0.06)",
               }}
             >
-              <PaymentForm plan={plan} onConfirm={() => setConfirmed(true)} />
+              <PaymentForm plan={plan} onConfirm={handleConfirm} />
             </div>
           </div>
         )}

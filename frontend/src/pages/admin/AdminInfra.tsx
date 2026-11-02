@@ -1,178 +1,83 @@
+import { useCallback, useEffect, useState } from "react";
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
+
+import { adminApi } from "@/api/admin";
 import AdminShell, { AdminNavId, AdminIcon } from "@/components/layout/AdminShell";
+import type { InfraAdmin } from "@/types";
+import { diaCorto, formatoBytes, haceCuanto } from "@/utils/format";
 
-// ── Data ───────────────────────────────────────────────────────────────────────
+// ── Semáforo ───────────────────────────────────────────────────────────────────
 
-type SemColor = "#00C896" | "#FBBF24" | "#FF6B6B";
+type Estado = InfraAdmin["componentes"][number]["estado"];
 
-interface Component {
-  id: string;
-  name: string;
-  status: "Operativo" | "Advertencia" | "Error";
-  color: SemColor;
-  metric: string;
-  metricLabel: string;
-  uptime: string;
-  detail: string;
-}
+const COLOR_ESTADO: Record<Estado, string> = { operativo: "#00C896", advertencia: "#FBBF24", error: "#FF6B6B" };
+const TEXTO_ESTADO: Record<Estado, string> = { operativo: "Operativo", advertencia: "Advertencia", error: "Error" };
+const COLOR_SEVERIDAD: Record<InfraAdmin["alertas"][number]["severidad"], string> = {
+  alta: "#FF6B6B", media: "#FBBF24", baja: "#2E9BFF",
+};
 
-const COMPONENTS: Component[] = [
-  {
-    id: "api",
-    name: "API Backend",
-    status: "Operativo",
-    color: "#00C896",
-    metric: "42 ms",
-    metricLabel: "Latencia P95",
-    uptime: "99.98 %",
-    detail: "12 pods activos · 3.1k req/min",
-  },
-  {
-    id: "db",
-    name: "Base de datos",
-    status: "Operativo",
-    color: "#00C896",
-    metric: "847 GB",
-    metricLabel: "Almacenamiento usado",
-    uptime: "99.99 %",
-    detail: "PostgreSQL 16 · réplicas ×3",
-  },
-  {
-    id: "minio",
-    name: "MinIO / S3",
-    status: "Advertencia",
-    color: "#FBBF24",
-    metric: "320 ms",
-    metricLabel: "Latencia PUT (elevada)",
-    uptime: "99.71 %",
-    detail: "Bucket principal degradado",
-  },
-  {
-    id: "auth",
-    name: "Autenticación",
-    status: "Operativo",
-    color: "#00C896",
-    metric: "0",
-    metricLabel: "Errores en 24 h",
-    uptime: "100 %",
-    detail: "OAuth2 + JWT · 2,847 sesiones",
-  },
-];
-
-// Storage usage — last 12 hours (hourly)
-const STORAGE_HISTORY = [
-  { h: "00:00", tb: 831 }, { h: "01:00", tb: 832 }, { h: "02:00", tb: 832 },
-  { h: "03:00", tb: 833 }, { h: "04:00", tb: 834 }, { h: "05:00", tb: 835 },
-  { h: "06:00", tb: 837 }, { h: "07:00", tb: 839 }, { h: "08:00", tb: 841 },
-  { h: "09:00", tb: 843 }, { h: "10:00", tb: 845 }, { h: "11:00", tb: 847 },
-];
-
-interface Incident {
-  id: number;
-  title: string;
-  component: string;
-  severity: "Alto" | "Medio" | "Bajo";
-  time: string;
-  color: SemColor;
-}
-
-const INCIDENTS: Incident[] = [
-  { id: 1, title: "MinIO latencia elevada en bucket principal", component: "MinIO / S3",    severity: "Alto",  time: "Hace 2 h",  color: "#FF6B6B" },
-  { id: 2, title: "Respaldo nocturno completado con retraso",   component: "Base de datos", severity: "Medio", time: "Hace 5 h",  color: "#FBBF24" },
-  { id: 3, title: "Query lenta detectada en tabla sessions",    component: "Base de datos", severity: "Bajo",  time: "Hace 8 h",  color: "#FBBF24" },
-];
-
-const OPEN_COUNT = INCIDENTS.length;
-
-// ── Sub-components ─────────────────────────────────────────────────────────────
-
-function Semaphore({ color, size = 10 }: { color: SemColor; size?: number }) {
+function Semaphore({ color, size = 10 }: { color: string; size?: number }) {
   return (
     <span
       className="rounded-full flex-shrink-0"
-      style={{
-        width: size,
-        height: size,
-        background: color,
-        boxShadow: `0 0 0 3px ${color}30`,
-        display: "inline-block",
-      }}
+      style={{ width: size, height: size, background: color, boxShadow: `0 0 0 3px ${color}30`, display: "inline-block" }}
     />
   );
 }
 
-function ComponentCard({ c }: { c: Component }) {
-  const statusBg: Record<string, string> = {
-    Operativo:   "#DCFCE7",
-    Advertencia: "#FEF9C3",
-    Error:       "#FEE2E2",
-  };
-  const statusColor: Record<string, string> = {
-    Operativo:   "#065F46",
-    Advertencia: "#92400E",
-    Error:       "#991B1B",
-  };
+function ComponentCard({ c }: { c: InfraAdmin["componentes"][number] }) {
+  const color = COLOR_ESTADO[c.estado];
+  const statusBg: Record<Estado, string> = { operativo: "var(--nv-green-soft)", advertencia: "var(--nv-amber-soft)", error: "var(--nv-red-soft)" };
+  const statusColor: Record<Estado, string> = { operativo: "var(--nv-green-strong)", advertencia: "var(--nv-amber-strong)", error: "var(--nv-red-strong)" };
 
   return (
     <div
       className="rounded-2xl p-5 flex flex-col gap-4"
-      style={{
-        background: "white",
-        border: `1px solid ${c.color === "#00C896" ? "#E2E8F0" : c.color + "40"}`,
-      }}
+      style={{ background: "var(--nv-surface)", border: `1px solid ${c.estado === "operativo" ? "var(--nv-border)" : color + "40"}` }}
     >
-      {/* Top */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2.5">
-          <Semaphore color={c.color} size={11} />
-          <h3 className="text-sm font-extrabold" style={{ color: "#0F172A", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            {c.name}
+          <Semaphore color={color} size={11} />
+          <h3 className="text-sm font-extrabold" style={{ color: "var(--nv-text-1)", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            {c.nombre}
           </h3>
         </div>
-        <span
-          className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-          style={{ background: statusBg[c.status], color: statusColor[c.status] }}
-        >
-          {c.status}
+        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: statusBg[c.estado], color: statusColor[c.estado] }}>
+          {TEXTO_ESTADO[c.estado]}
         </span>
       </div>
 
-      {/* Metric */}
-      <div className="flex items-end justify-between">
-        <div>
-          <p
-            className="text-2xl font-extrabold leading-none"
-            style={{ color: c.color, fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-          >
-            {c.metric}
-          </p>
-          <p className="text-[10px] font-semibold mt-0.5" style={{ color: "#94A3B8" }}>{c.metricLabel}</p>
-        </div>
-        <div className="text-right">
-          <p className="text-xs font-bold" style={{ color: "#0F172A" }}>{c.uptime}</p>
-          <p className="text-[10px]" style={{ color: "#94A3B8" }}>uptime 30d</p>
-        </div>
+      <div>
+        <p className="text-2xl font-extrabold leading-none" style={{ color, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+          {c.metrica}
+        </p>
+        <p className="text-[10px] font-semibold mt-0.5" style={{ color: "var(--nv-text-4)" }}>{c.metrica_etiqueta}</p>
       </div>
 
-      {/* Detail */}
-      <p className="text-[11px] font-medium" style={{ color: "#94A3B8" }}>{c.detail}</p>
+      <p className="text-[11px] font-medium break-words" style={{ color: c.estado === "error" ? "var(--nv-red-strong)" : "var(--nv-text-4)" }}>{c.detalle}</p>
     </div>
   );
 }
 
-const StorageTooltip = ({ active, payload, label }: { active?: boolean; payload?: { value: number }[]; label?: string }) => {
+const StorageTooltip = ({ active, payload, label }: { active?: boolean; payload?: { payload: { bytes: number } }[]; label?: string }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="px-3 py-2.5 rounded-xl text-xs shadow-xl" style={{ background: "white", border: "1px solid #E2E8F0" }}>
-      <p className="font-bold mb-0.5" style={{ color: "#0F172A" }}>{label}</p>
+    <div className="px-3 py-2.5 rounded-xl text-xs shadow-xl" style={{ background: "var(--nv-surface)", border: "1px solid var(--nv-border)" }}>
+      <p className="font-bold mb-0.5" style={{ color: "var(--nv-text-1)" }}>{label}</p>
       <p style={{ color: "#2E9BFF" }}>
-        <span className="font-semibold">Almacenamiento:</span> {payload[0].value} TB
+        <span className="font-semibold">Almacenamiento:</span> {formatoBytes(payload[0].payload.bytes)}
       </p>
     </div>
   );
 };
+
+function unidadPara(maxBytes: number): { nombre: string; divisor: number } {
+  if (maxBytes >= 1024 ** 3) return { nombre: "GB", divisor: 1024 ** 3 };
+  if (maxBytes >= 1024 ** 2) return { nombre: "MB", divisor: 1024 ** 2 };
+  return { nombre: "KB", divisor: 1024 };
+}
 
 // ── Main ───────────────────────────────────────────────────────────────────────
 
@@ -182,176 +87,194 @@ interface AdminInfraProps {
 }
 
 export default function AdminInfra({ onNav, onLogout }: AdminInfraProps) {
+  const [datos, setDatos] = useState<InfraAdmin | null>(null);
+  const [error, setError] = useState("");
+  const [revisando, setRevisando] = useState(false);
+  const [revisadoEn, setRevisadoEn] = useState<Date | null>(null);
+
+  const revisar = useCallback(() => {
+    setRevisando(true);
+    adminApi
+      .infra()
+      .then((d) => { setDatos(d); setError(""); setRevisadoEn(new Date()); })
+      .catch((e: Error) => setError(e.message))
+      .finally(() => setRevisando(false));
+  }, []);
+  useEffect(revisar, [revisar]);
+
+  const componentes = datos?.componentes ?? [];
+  const hayError = componentes.some((c) => c.estado === "error");
+  const hayAviso = componentes.some((c) => c.estado === "advertencia");
+  const alertas = datos?.alertas ?? [];
+
+  const historial = datos?.historial_almacenamiento ?? [];
+  const unidad = unidadPara(Math.max(...historial.map((p) => p.bytes), 1));
+  const serie = historial.map((p) => ({ dia: diaCorto(p.dia), valor: +(p.bytes / unidad.divisor).toFixed(2), bytes: p.bytes }));
+
+  const a = datos?.actividad;
+  const metricas = a ? [
+    { label: "Subidas (24 h)", value: String(a.subidas), sub: `${formatoBytes(a.bytes_subidos)} subidos`, color: "#2E9BFF", bg: "var(--nv-blue-soft)" },
+    { label: "Descargas (24 h)", value: String(a.descargas), sub: "archivos descargados", color: "#A78BFA", bg: "var(--nv-violet-soft)" },
+    { label: "Usuarios que entraron hoy", value: String(a.usuarios_con_acceso_hoy), sub: `${a.sesiones_activas} sesiones abiertas`, color: "#00C896", bg: "var(--nv-green-soft)" },
+    { label: "Archivos almacenados", value: a.archivos_almacenados.toLocaleString("es-GT"), sub: "en toda la plataforma", color: "#F59E0B", bg: "var(--nv-amber-soft)" },
+  ] : [];
+
   return (
     <AdminShell
       activeNav="infra"
       onNav={onNav}
       onLogout={onLogout}
       title="Infraestructura"
+      headerRight={
+        <button
+          onClick={revisar}
+          disabled={revisando}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white transition-all duration-150 disabled:opacity-60"
+          style={{ background: "#2E9BFF" }}
+        >
+          {revisando ? "Revisando…" : "Volver a revisar"}
+        </button>
+      }
     >
       <div className="max-w-7xl mx-auto flex flex-col gap-6">
-
-        {/* System status bar */}
-        <div
-          className="flex items-center justify-between px-5 py-3.5 rounded-2xl"
-          style={{
-            background: COMPONENTS.some((c) => c.status === "Error") ? "#FEE2E2"
-              : COMPONENTS.some((c) => c.status === "Advertencia") ? "#FEF9C3"
-              : "#DCFCE7",
-            border: `1px solid ${
-              COMPONENTS.some((c) => c.status === "Error") ? "#FECACA"
-              : COMPONENTS.some((c) => c.status === "Advertencia") ? "#FDE68A"
-              : "#A7F3D0"
-            }`,
-          }}
-        >
-          <div className="flex items-center gap-2.5">
-            <Semaphore
-              color={COMPONENTS.some((c) => c.status === "Error") ? "#FF6B6B" : COMPONENTS.some((c) => c.status === "Advertencia") ? "#FBBF24" : "#00C896"}
-              size={10}
-            />
-            <p className="text-sm font-bold" style={{ color: "#0F172A" }}>
-              {COMPONENTS.some((c) => c.status === "Error")
-                ? "Sistema degradado — se requiere atención inmediata"
-                : COMPONENTS.some((c) => c.status === "Advertencia")
-                ? "Sistema operativo con advertencias activas"
-                : "Todos los sistemas operativos"}
-            </p>
-          </div>
-          <p className="text-xs" style={{ color: "#64748B" }}>
-            Actualizado: {new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}
+        {error && (
+          <p className="text-xs px-4 py-2.5 rounded-xl" style={{ background: "var(--nv-red-soft)", color: "var(--nv-red-strong)" }}>
+            No se pudo consultar la infraestructura: {error}
           </p>
-        </div>
+        )}
+        {!datos && !error && <p className="text-sm text-center py-16" style={{ color: "var(--nv-text-4)" }}>Revisando servicios…</p>}
 
-        {/* Component status cards */}
-        <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
-          {COMPONENTS.map((c) => <ComponentCard key={c.id} c={c} />)}
-        </div>
-
-        {/* Charts row */}
-        <div className="grid lg:grid-cols-3 gap-5">
-
-          {/* Storage usage line chart — 2/3 */}
-          <div className="lg:col-span-2 rounded-2xl p-6" style={{ background: "white", border: "1px solid #E2E8F0" }}>
-            <div className="mb-5">
-              <p className="text-xs font-bold uppercase tracking-widest mb-0.5" style={{ color: "#94A3B8" }}>Últimas 12 horas</p>
-              <h3 className="text-sm font-extrabold" style={{ color: "#0F172A", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                Uso de almacenamiento (TB)
-              </h3>
-            </div>
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={STORAGE_HISTORY} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="storageGrad" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor="#2E9BFF" />
-                    <stop offset="100%" stopColor="#00D1C1" />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
-                <XAxis dataKey="h" tick={{ fontSize: 9, fill: "#94A3B8" }} axisLine={false} tickLine={false} />
-                <YAxis
-                  tick={{ fontSize: 9, fill: "#94A3B8" }}
-                  axisLine={false} tickLine={false}
-                  domain={["dataMin - 5", "dataMax + 5"]}
-                  tickFormatter={(v) => `${v}`}
-                />
-                <Tooltip content={<StorageTooltip />} cursor={{ stroke: "#E2E8F0", strokeWidth: 1 }} />
-                <ReferenceLine
-                  y={900}
-                  stroke="#FBBF24"
-                  strokeDasharray="4 4"
-                  label={{ value: "Límite alerta 900 TB", position: "right", fontSize: 9, fill: "#B45309" }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="tb"
-                  stroke="url(#storageGrad)"
-                  strokeWidth={2.5}
-                  dot={{ r: 3.5, fill: "#2E9BFF", stroke: "white", strokeWidth: 2 }}
-                  activeDot={{ r: 5, fill: "#2E9BFF", stroke: "white", strokeWidth: 2 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Incidents card — 1/3 */}
-          <div className="rounded-2xl flex flex-col overflow-hidden" style={{ background: "white", border: "1px solid #E2E8F0" }}>
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid #F1F5F9" }}>
-              <div>
-                <p className="text-xs font-bold uppercase tracking-widest mb-0.5" style={{ color: "#94A3B8" }}>En curso</p>
-                <h3 className="text-sm font-extrabold" style={{ color: "#0F172A", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Incidencias abiertas</h3>
+        {datos && (
+          <>
+            {/* System status bar */}
+            <div
+              className="flex flex-wrap items-center justify-between gap-2 px-5 py-3.5 rounded-2xl"
+              style={{
+                background: hayError ? "var(--nv-red-soft)" : hayAviso ? "var(--nv-amber-soft)" : "var(--nv-green-soft)",
+                border: `1px solid ${hayError ? "var(--nv-red-border)" : hayAviso ? "var(--nv-amber-border)" : "var(--nv-green-border)"}`,
+              }}
+            >
+              <div className="flex items-center gap-2.5">
+                <Semaphore color={hayError ? "#FF6B6B" : hayAviso ? "#FBBF24" : "#00C896"} size={10} />
+                <p className="text-sm font-bold" style={{ color: "var(--nv-text-1)" }}>
+                  {hayError
+                    ? "Sistema degradado: hay un servicio que no responde"
+                    : hayAviso
+                    ? "Sistema operativo con advertencias"
+                    : "Todos los sistemas operativos"}
+                </p>
               </div>
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center text-lg font-extrabold"
-                style={{
-                  background: OPEN_COUNT > 0 ? "#FEE2E2" : "#DCFCE7",
-                  color: OPEN_COUNT > 0 ? "#FF6B6B" : "#00C896",
-                  fontFamily: "'Plus Jakarta Sans', sans-serif",
-                }}
-              >
-                {OPEN_COUNT}
-              </div>
+              <p className="text-xs" style={{ color: "var(--nv-text-3)" }}>
+                API en línea {haceCuanto(datos.en_linea_desde).replace("hace", "desde hace")} · entorno {datos.entorno}
+                {revisadoEn && ` · revisado ${revisadoEn.toLocaleTimeString("es-GT", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`}
+              </p>
             </div>
 
-            {/* Incident list */}
-            <div className="flex-1 flex flex-col divide-y" style={{ borderColor: "#F8FAFC" }}>
-              {INCIDENTS.map((inc) => (
-                <div key={inc.id} className="px-5 py-3.5 flex flex-col gap-1.5">
-                  <div className="flex items-start gap-2">
-                    <Semaphore color={inc.color} size={8} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold leading-snug" style={{ color: "#0F172A" }}>{inc.title}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span
-                          className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                          style={{ background: inc.color + "18", color: inc.color }}
-                        >
-                          {inc.severity}
-                        </span>
-                        <span className="text-[10px]" style={{ color: "#94A3B8" }}>{inc.component}</span>
-                      </div>
-                    </div>
+            {/* Component status cards */}
+            <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
+              {componentes.map((c) => <ComponentCard key={c.id} c={c} />)}
+            </div>
+
+            {/* Charts row */}
+            <div className="grid lg:grid-cols-3 gap-5">
+              <div className="lg:col-span-2 rounded-2xl p-6" style={{ background: "var(--nv-surface)", border: "1px solid var(--nv-border)" }}>
+                <div className="mb-5">
+                  <p className="text-xs font-bold uppercase tracking-widest mb-0.5" style={{ color: "var(--nv-text-4)" }}>Últimos 14 días</p>
+                  <h3 className="text-sm font-extrabold" style={{ color: "var(--nv-text-1)", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                    Almacenamiento total de la plataforma ({unidad.nombre})
+                  </h3>
+                  <p className="text-[11px] mt-0.5" style={{ color: "var(--nv-text-4)" }}>
+                    {formatoBytes(historial[historial.length - 1]?.bytes ?? 0)} usados de {formatoBytes(datos.cuota_contratada_bytes)} contratados por los clientes
+                  </p>
+                </div>
+                <ResponsiveContainer width="100%" height={200}>
+                  <LineChart data={serie} margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="storageGrad" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="#2E9BFF" />
+                        <stop offset="100%" stopColor="#00D1C1" />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--nv-muted)" vertical={false} />
+                    <XAxis dataKey="dia" tick={{ fontSize: 9, fill: "var(--nv-text-4)" }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 9, fill: "var(--nv-text-4)" }} axisLine={false} tickLine={false} />
+                    <Tooltip content={<StorageTooltip />} cursor={{ stroke: "var(--nv-border)", strokeWidth: 1 }} />
+                    <Line
+                      type="monotone"
+                      dataKey="valor"
+                      stroke="url(#storageGrad)"
+                      strokeWidth={2.5}
+                      dot={{ r: 3.5, fill: "#2E9BFF", stroke: "var(--nv-surface)", strokeWidth: 2 }}
+                      activeDot={{ r: 5, fill: "#2E9BFF", stroke: "var(--nv-surface)", strokeWidth: 2 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Alerts card */}
+              <div className="rounded-2xl flex flex-col overflow-hidden" style={{ background: "var(--nv-surface)", border: "1px solid var(--nv-border)" }}>
+                <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--nv-muted)" }}>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-widest mb-0.5" style={{ color: "var(--nv-text-4)" }}>Ahora mismo</p>
+                    <h3 className="text-sm font-extrabold" style={{ color: "var(--nv-text-1)", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Alertas</h3>
                   </div>
-                  <p className="text-[10px] pl-3" style={{ color: "#94A3B8" }}>{inc.time}</p>
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center text-lg font-extrabold"
+                    style={{
+                      background: alertas.length ? "var(--nv-red-soft)" : "var(--nv-green-soft)",
+                      color: alertas.length ? "#FF6B6B" : "#00C896",
+                      fontFamily: "'Plus Jakarta Sans', sans-serif",
+                    }}
+                  >
+                    {alertas.length}
+                  </div>
+                </div>
+
+                <div className="flex-1 flex flex-col divide-y" style={{ borderColor: "var(--nv-bg)" }}>
+                  {alertas.length === 0 && (
+                    <div className="px-5 py-8 flex flex-col items-center gap-2 text-center">
+                      <span style={{ color: "#00C896" }}><AdminIcon id="check" size={22} /></span>
+                      <p className="text-xs" style={{ color: "var(--nv-text-3)" }}>Sin alertas: servicios respondiendo y ningún cliente cerca de su límite.</p>
+                    </div>
+                  )}
+                  {alertas.map((al, i) => {
+                    const color = COLOR_SEVERIDAD[al.severidad];
+                    return (
+                      <div key={i} className="px-5 py-3.5 flex items-start gap-2">
+                        <span className="mt-1"><Semaphore color={color} size={8} /></span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold leading-snug break-words" style={{ color: "var(--nv-text-1)" }}>{al.titulo}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full capitalize" style={{ background: color + "18", color }}>
+                              {al.severidad}
+                            </span>
+                            <span className="text-[10px]" style={{ color: "var(--nv-text-4)" }}>{al.componente}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Metrics summary row */}
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {metricas.map(({ label, value, sub, color, bg }) => (
+                <div key={label} className="rounded-2xl p-5" style={{ background: "var(--nv-surface)", border: "1px solid var(--nv-border)" }}>
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center mb-3" style={{ background: bg, color }}>
+                    <AdminIcon id="server" size={16} />
+                  </div>
+                  <p className="text-xl font-extrabold leading-none mb-1" style={{ color, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                    {value}
+                  </p>
+                  <p className="text-xs font-semibold" style={{ color: "var(--nv-text-3)" }}>{label}</p>
+                  <p className="text-[10px] mt-0.5" style={{ color: "var(--nv-text-4)" }}>{sub}</p>
                 </div>
               ))}
             </div>
-
-            {/* Footer */}
-            <div className="px-5 py-3" style={{ borderTop: "1px solid #F1F5F9" }}>
-              <button
-                className="w-full py-2 rounded-xl text-xs font-semibold transition-colors"
-                style={{ background: "#F8FAFC", color: "#64748B" }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "#E0F4FF"; e.currentTarget.style.color = "#2E9BFF"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "#F8FAFC"; e.currentTarget.style.color = "#64748B"; }}
-              >
-                Ver historial completo →
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Metrics summary row */}
-        <div className="grid sm:grid-cols-4 gap-4">
-          {[
-            { label: "Total requests hoy",    value: "4.2M",  color: "#2E9BFF",  bg: "#E0F4FF" },
-            { label: "Errores 5xx (24 h)",    value: "18",    color: "#FF6B6B",  bg: "#FEE2E2" },
-            { label: "Usuarios conectados",   value: "312",   color: "#00C896",  bg: "#DCFCE7" },
-            { label: "Transfers activas",     value: "47",    color: "#A78BFA",  bg: "#F5F3FF" },
-          ].map(({ label, value, color, bg }) => (
-            <div key={label} className="rounded-2xl p-5" style={{ background: "white", border: "1px solid #E2E8F0" }}>
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center mb-3" style={{ background: bg }}>
-                <AdminIcon id="server" size={16} />
-              </div>
-              <p className="text-xl font-extrabold leading-none mb-1" style={{ color, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                {value}
-              </p>
-              <p className="text-xs" style={{ color: "#94A3B8" }}>{label}</p>
-            </div>
-          ))}
-        </div>
-
+          </>
+        )}
       </div>
     </AdminShell>
   );

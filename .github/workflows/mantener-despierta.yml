@@ -1,0 +1,23 @@
+# Mantiene despierta la API de Render en horario de uso.
+# En el plan gratis, Render duerme la API tras 15 min sin peticiones y despertarla puede tardar 1-2 minutos.
+# Una visita cada 10 minutos evita que se duerma.
+#
+# Solo de 7:00 a 22:00 (hora de Guatemala, UTC-6): el plan gratis da 750 horas al mes entre todos los
+# servicios. La API despierta 15 h al día gasta ~465 h y deja margen para el frontend.
+# GitHub puede retrasar unos minutos los workflows programados; por eso el frontend también reintenta.
+
+name: Mantener despierta la API
+
+on:
+  schedule:
+    - cron: "*/10 13-23 * * *" # 07:00-17:59 en Guatemala
+    - cron: "*/10 0-3 * * *"   # 18:00-21:59 en Guatemala
+  workflow_dispatch: # para correrlo a mano desde la pestaña Actions
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Visitar /api/health
+        run: curl -fsS --retry 3 --retry-delay 20 --retry-all-errors --max-time 150 https://nimbusvault-api-7b7k.onrender.com/api/health

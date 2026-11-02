@@ -55,9 +55,9 @@ function StatusBadge({ status }: { status: "Activo" | "Inactivo" }) {
   return (
     <span
       className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full"
-      style={{ background: active ? "#DCFCE7" : "#F1F5F9", color: active ? "#00C896" : "#94A3B8" }}
+      style={{ background: active ? "var(--nv-green-soft)" : "var(--nv-muted)", color: active ? "#00C896" : "var(--nv-text-4)" }}
     >
-      <span className="w-1.5 h-1.5 rounded-full" style={{ background: active ? "#00C896" : "#94A3B8" }} />
+      <span className="w-1.5 h-1.5 rounded-full" style={{ background: active ? "#00C896" : "var(--nv-text-4)" }} />
       {status}
     </span>
   );
@@ -120,13 +120,13 @@ function PlanModal({ modalState, onClose, onSave }: PlanModalProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(15,23,42,0.45)", backdropFilter: "blur(4px)" }}>
       <div
         className="w-full max-w-lg rounded-2xl overflow-hidden"
-        style={{ background: "white", boxShadow: "0 20px 60px rgba(0,0,0,0.18)" }}
+        style={{ background: "var(--nv-surface)", boxShadow: "0 20px 60px rgba(0,0,0,0.18)" }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid #F1F5F9" }}>
-          <h3 className="font-extrabold" style={{ color: "#0F172A", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{title}</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg transition-colors" style={{ color: "#94A3B8" }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "#F1F5F9")}
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid var(--nv-muted)" }}>
+          <h3 className="font-extrabold" style={{ color: "var(--nv-text-1)", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{title}</h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg transition-colors" style={{ color: "var(--nv-text-4)" }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "var(--nv-muted)")}
             onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
             <AdminIcon id="x" size={18} />
           </button>
@@ -135,44 +135,44 @@ function PlanModal({ modalState, onClose, onSave }: PlanModalProps) {
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4 max-h-[75vh] overflow-y-auto">
           {error && (
-            <div className="px-4 py-2.5 rounded-xl text-sm font-semibold" style={{ background: "#FEE2E2", color: "#B91C1C" }}>
+            <div className="px-4 py-2.5 rounded-xl text-sm font-semibold" style={{ background: "var(--nv-red-soft)", color: "var(--nv-red-strong)" }}>
               {error}
             </div>
           )}
           {/* Name */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-semibold" style={{ color: "#334155" }}>Nombre del plan</label>
+            <label className="text-sm font-semibold" style={{ color: "var(--nv-text-2)" }}>Nombre del plan</label>
             <input
               required
               value={form.name}
               onChange={(e) => set("name")(e.target.value)}
               placeholder="Pro Plus"
               className="px-4 py-2.5 rounded-xl text-sm outline-none"
-              style={{ border: "1.5px solid #E2E8F0", color: "#0F172A" }}
+              style={{ border: "1.5px solid var(--nv-border)", color: "var(--nv-text-1)" }}
               onFocus={(e) => (e.target.style.borderColor = "#2E9BFF")}
-              onBlur={(e) => (e.target.style.borderColor = "#E2E8F0")}
+              onBlur={(e) => (e.target.style.borderColor = "var(--nv-border)")}
             />
           </div>
 
           {/* Description */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-semibold" style={{ color: "#334155" }}>Descripción</label>
+            <label className="text-sm font-semibold" style={{ color: "var(--nv-text-2)" }}>Descripción</label>
             <textarea
               value={form.desc}
               onChange={(e) => set("desc")(e.target.value)}
               placeholder="Describe brevemente qué incluye este plan…"
               rows={2}
               className="px-4 py-2.5 rounded-xl text-sm outline-none resize-none"
-              style={{ border: "1.5px solid #E2E8F0", color: "#0F172A" }}
+              style={{ border: "1.5px solid var(--nv-border)", color: "var(--nv-text-1)" }}
               onFocus={(e) => (e.target.style.borderColor = "#2E9BFF")}
-              onBlur={(e) => (e.target.style.borderColor = "#E2E8F0")}
+              onBlur={(e) => (e.target.style.borderColor = "var(--nv-border)")}
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             {/* Price */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold" style={{ color: "#334155" }}>Precio mensual (USD)</label>
+              <label className="text-sm font-semibold" style={{ color: "var(--nv-text-2)" }}>Precio mensual (USD)</label>
               <input
                 required
                 type="number"
@@ -182,15 +182,15 @@ function PlanModal({ modalState, onClose, onSave }: PlanModalProps) {
                 onChange={(e) => set("price")(e.target.value)}
                 placeholder="9.00"
                 className="px-4 py-2.5 rounded-xl text-sm outline-none"
-                style={{ border: "1.5px solid #E2E8F0", color: "#0F172A" }}
+                style={{ border: "1.5px solid var(--nv-border)", color: "var(--nv-text-1)" }}
                 onFocus={(e) => (e.target.style.borderColor = "#2E9BFF")}
-                onBlur={(e) => (e.target.style.borderColor = "#E2E8F0")}
+                onBlur={(e) => (e.target.style.borderColor = "var(--nv-border)")}
               />
             </div>
 
             {/* GB */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold" style={{ color: "#334155" }}>Almacenamiento (GB)</label>
+              <label className="text-sm font-semibold" style={{ color: "var(--nv-text-2)" }}>Almacenamiento (GB)</label>
               <input
                 required
                 type="number"
@@ -199,9 +199,9 @@ function PlanModal({ modalState, onClose, onSave }: PlanModalProps) {
                 onChange={(e) => set("gb")(e.target.value)}
                 placeholder="100"
                 className="px-4 py-2.5 rounded-xl text-sm outline-none"
-                style={{ border: "1.5px solid #E2E8F0", color: "#0F172A" }}
+                style={{ border: "1.5px solid var(--nv-border)", color: "var(--nv-text-1)" }}
                 onFocus={(e) => (e.target.style.borderColor = "#2E9BFF")}
-                onBlur={(e) => (e.target.style.borderColor = "#E2E8F0")}
+                onBlur={(e) => (e.target.style.borderColor = "var(--nv-border)")}
               />
             </div>
           </div>
@@ -209,12 +209,12 @@ function PlanModal({ modalState, onClose, onSave }: PlanModalProps) {
           <div className="grid grid-cols-2 gap-3">
             {/* Vigencia */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold" style={{ color: "#334155" }}>Vigencia</label>
+              <label className="text-sm font-semibold" style={{ color: "var(--nv-text-2)" }}>Vigencia</label>
               <select
                 value={form.vigencia}
                 onChange={(e) => set("vigencia")(e.target.value)}
                 className="px-4 py-2.5 rounded-xl text-sm outline-none"
-                style={{ border: "1.5px solid #E2E8F0", color: "#0F172A" }}
+                style={{ border: "1.5px solid var(--nv-border)", color: "var(--nv-text-1)" }}
               >
                 <option value="30">Mensual (30 días)</option>
                 <option value="90">Trimestral (90 días)</option>
@@ -224,12 +224,12 @@ function PlanModal({ modalState, onClose, onSave }: PlanModalProps) {
 
             {/* Destacado */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold" style={{ color: "#334155" }}>¿Plan recomendado?</label>
+              <label className="text-sm font-semibold" style={{ color: "var(--nv-text-2)" }}>¿Plan recomendado?</label>
               <select
                 value={form.destacado}
                 onChange={(e) => set("destacado")(e.target.value)}
                 className="px-4 py-2.5 rounded-xl text-sm outline-none"
-                style={{ border: "1.5px solid #E2E8F0", color: "#0F172A" }}
+                style={{ border: "1.5px solid var(--nv-border)", color: "var(--nv-text-1)" }}
               >
                 <option value="no">No</option>
                 <option value="si">Sí, mostrar "Más popular"</option>
@@ -239,14 +239,14 @@ function PlanModal({ modalState, onClose, onSave }: PlanModalProps) {
 
           {/* Características */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-semibold" style={{ color: "#334155" }}>Características (una por línea)</label>
+            <label className="text-sm font-semibold" style={{ color: "var(--nv-text-2)" }}>Características (una por línea)</label>
             <textarea
               value={form.features}
               onChange={(e) => set("features")(e.target.value)}
               placeholder={"100 GB de almacenamiento\nSoporte prioritario"}
               rows={4}
               className="px-4 py-2.5 rounded-xl text-sm outline-none resize-none"
-              style={{ border: "1.5px solid #E2E8F0", color: "#0F172A" }}
+              style={{ border: "1.5px solid var(--nv-border)", color: "var(--nv-text-1)" }}
             />
           </div>
 
@@ -256,7 +256,7 @@ function PlanModal({ modalState, onClose, onSave }: PlanModalProps) {
               type="button"
               onClick={onClose}
               className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-              style={{ background: "#F1F5F9", color: "#64748B" }}
+              style={{ background: "var(--nv-muted)", color: "var(--nv-text-3)" }}
             >
               Cancelar
             </button>
@@ -365,15 +365,15 @@ export default function AdminPlans({ onNav, onLogout }: AdminPlansProps) {
       <div className="max-w-7xl mx-auto flex flex-col gap-5">
 
         {errorGeneral && (
-          <div className="px-4 py-2.5 rounded-xl text-sm font-semibold" style={{ background: "#FEE2E2", color: "#B91C1C", border: "1px solid #FECACA" }}>
+          <div className="px-4 py-2.5 rounded-xl text-sm font-semibold" style={{ background: "var(--nv-red-soft)", color: "var(--nv-red-strong)", border: "1px solid var(--nv-red-border)" }}>
             {errorGeneral}
           </div>
         )}
-        {cargando && <p className="text-sm" style={{ color: "#94A3B8" }}>Cargando planes…</p>}
+        {cargando && <p className="text-sm" style={{ color: "var(--nv-text-4)" }}>Cargando planes…</p>}
 
         {notif && (
           <div className="px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2"
-            style={{ background: "#DCFCE7", color: "#065F46", border: "1px solid #A7F3D0" }}>
+            style={{ background: "var(--nv-green-soft)", color: "var(--nv-green-strong)", border: "1px solid var(--nv-green-border)" }}>
             <AdminIcon id="check" size={16} />{notif}
           </div>
         )}
@@ -384,7 +384,7 @@ export default function AdminPlans({ onNav, onLogout }: AdminPlansProps) {
             <div
               key={plan.id}
               className="rounded-2xl p-5 flex flex-col gap-4"
-              style={{ background: "white", border: `1px solid #E2E8F0` }}
+              style={{ background: "var(--nv-surface)", border: `1px solid var(--nv-border)` }}
             >
               {/* Header */}
               <div className="flex items-start justify-between">
@@ -401,11 +401,11 @@ export default function AdminPlans({ onNav, onLogout }: AdminPlansProps) {
               <div>
                 <h3
                   className="text-base font-extrabold"
-                  style={{ color: "#0F172A", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                  style={{ color: "var(--nv-text-1)", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
                 >
                   {plan.name}
                 </h3>
-                <p className="text-xs mt-0.5 leading-snug" style={{ color: "#64748B" }}>{plan.desc}</p>
+                <p className="text-xs mt-0.5 leading-snug" style={{ color: "var(--nv-text-3)" }}>{plan.desc}</p>
               </div>
 
               {/* Stats row */}
@@ -415,11 +415,11 @@ export default function AdminPlans({ onNav, onLogout }: AdminPlansProps) {
                   { label: "Espacio", value: plan.gbLabel  },
                   { label: "Suscriptores", value: plan.subs.toLocaleString() },
                 ].map(({ label, value }) => (
-                  <div key={label} className="rounded-xl p-2 text-center" style={{ background: "#F8FAFC" }}>
+                  <div key={label} className="rounded-xl p-2 text-center" style={{ background: "var(--nv-bg)" }}>
                     <p className="text-xs font-extrabold leading-tight" style={{ color: plan.color, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                       {value}
                     </p>
-                    <p className="text-[9px] font-semibold mt-0.5" style={{ color: "#94A3B8" }}>{label}</p>
+                    <p className="text-[9px] font-semibold mt-0.5" style={{ color: "var(--nv-text-4)" }}>{label}</p>
                   </div>
                 ))}
               </div>
@@ -432,13 +432,13 @@ export default function AdminPlans({ onNav, onLogout }: AdminPlansProps) {
               </div>
 
               {/* Actions */}
-              <div className="flex gap-2 pt-1" style={{ borderTop: "1px solid #F1F5F9" }}>
+              <div className="flex gap-2 pt-1" style={{ borderTop: "1px solid var(--nv-muted)" }}>
                 <button
                   onClick={() => openEdit(plan)}
                   className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all"
-                  style={{ background: "#F1F5F9", color: "#334155" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "#E0F4FF"; e.currentTarget.style.color = "#2E9BFF"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "#F1F5F9"; e.currentTarget.style.color = "#334155"; }}
+                  style={{ background: "var(--nv-muted)", color: "var(--nv-text-2)" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "var(--nv-blue-soft)"; e.currentTarget.style.color = "#2E9BFF"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "var(--nv-muted)"; e.currentTarget.style.color = "var(--nv-text-2)"; }}
                 >
                   <AdminIcon id="edit" size={13} />
                   Editar
@@ -447,8 +447,8 @@ export default function AdminPlans({ onNav, onLogout }: AdminPlansProps) {
                   onClick={() => toggleStatus(plan.id)}
                   className="py-2 px-3 rounded-xl text-xs font-semibold transition-all"
                   style={{
-                    background: plan.status === "Activo" ? "#FEF9C3" : "#DCFCE7",
-                    color: plan.status === "Activo" ? "#B45309" : "#065F46",
+                    background: plan.status === "Activo" ? "var(--nv-amber-soft)" : "var(--nv-green-soft)",
+                    color: plan.status === "Activo" ? "var(--nv-amber-strong)" : "var(--nv-green-strong)",
                   }}
                   title={plan.status === "Activo" ? "Desactivar" : "Activar"}
                 >
@@ -457,10 +457,10 @@ export default function AdminPlans({ onNav, onLogout }: AdminPlansProps) {
                 <button
                   onClick={() => deletePlan(plan.id)}
                   className="py-2 px-3 rounded-xl text-xs font-semibold transition-all"
-                  style={{ background: "#F1F5F9", color: "#94A3B8" }}
+                  style={{ background: "var(--nv-muted)", color: "var(--nv-text-4)" }}
                   title="Eliminar"
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "#FEE2E2"; e.currentTarget.style.color = "#FF6B6B"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "#F1F5F9"; e.currentTarget.style.color = "#94A3B8"; }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "var(--nv-red-soft)"; e.currentTarget.style.color = "#FF6B6B"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "var(--nv-muted)"; e.currentTarget.style.color = "var(--nv-text-4)"; }}
                 >
                   <AdminIcon id="trash" size={13} />
                 </button>
@@ -470,17 +470,17 @@ export default function AdminPlans({ onNav, onLogout }: AdminPlansProps) {
         </div>
 
         {/* Plans table (alternate view) */}
-        <div className="rounded-2xl overflow-hidden" style={{ background: "white", border: "1px solid #E2E8F0" }}>
-          <div className="px-6 py-4" style={{ borderBottom: "1px solid #F1F5F9" }}>
-            <p className="text-xs font-bold uppercase tracking-widest mb-0.5" style={{ color: "#94A3B8" }}>Vista completa</p>
-            <h3 className="text-sm font-extrabold" style={{ color: "#0F172A", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Todos los planes</h3>
+        <div className="rounded-2xl overflow-hidden" style={{ background: "var(--nv-surface)", border: "1px solid var(--nv-border)" }}>
+          <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--nv-muted)" }}>
+            <p className="text-xs font-bold uppercase tracking-widest mb-0.5" style={{ color: "var(--nv-text-4)" }}>Vista completa</p>
+            <h3 className="text-sm font-extrabold" style={{ color: "var(--nv-text-1)", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Todos los planes</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr style={{ borderBottom: "1px solid #F1F5F9" }}>
+                <tr style={{ borderBottom: "1px solid var(--nv-muted)" }}>
                   {["Plan", "Precio", "Almacenamiento", "Suscriptores", "Vigencia", "Estado", "Acciones"].map((h) => (
-                    <th key={h} className="text-left px-5 py-3 text-[10px] font-bold uppercase tracking-widest" style={{ color: "#94A3B8" }}>{h}</th>
+                    <th key={h} className="text-left px-5 py-3 text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--nv-text-4)" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -488,8 +488,8 @@ export default function AdminPlans({ onNav, onLogout }: AdminPlansProps) {
                 {plans.map((plan, i) => (
                   <tr
                     key={plan.id}
-                    style={{ borderBottom: i < plans.length - 1 ? "1px solid #F8FAFC" : "none" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "#F8FAFC")}
+                    style={{ borderBottom: i < plans.length - 1 ? "1px solid var(--nv-bg)" : "none" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--nv-bg)")}
                     onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                   >
                     <td className="px-5 py-3.5">
@@ -497,12 +497,12 @@ export default function AdminPlans({ onNav, onLogout }: AdminPlansProps) {
                         <div className="w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-bold text-white" style={{ background: plan.color }}>
                           {plan.name.slice(0, 2).toUpperCase()}
                         </div>
-                        <span className="text-xs font-semibold" style={{ color: "#0F172A" }}>{plan.name}</span>
+                        <span className="text-xs font-semibold" style={{ color: "var(--nv-text-1)" }}>{plan.name}</span>
                       </div>
                     </td>
                     <td className="px-5 py-3.5 text-xs font-bold" style={{ color: plan.color }}>{plan.price}</td>
-                    <td className="px-5 py-3.5 text-xs" style={{ color: "#334155" }}>{plan.gbLabel}</td>
-                    <td className="px-5 py-3.5 text-xs font-semibold" style={{ color: "#334155" }}>{plan.subs.toLocaleString()}</td>
+                    <td className="px-5 py-3.5 text-xs" style={{ color: "var(--nv-text-2)" }}>{plan.gbLabel}</td>
+                    <td className="px-5 py-3.5 text-xs font-semibold" style={{ color: "var(--nv-text-2)" }}>{plan.subs.toLocaleString()}</td>
                     <td className="px-5 py-3.5">
                       <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ background: plan.color + "18", color: plan.color }}>{plan.vigencia}</span>
                     </td>
@@ -510,15 +510,15 @@ export default function AdminPlans({ onNav, onLogout }: AdminPlansProps) {
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-1.5">
                         <button onClick={() => openEdit(plan)}
-                          className="p-1.5 rounded-lg transition-colors" style={{ color: "#94A3B8" }}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = "#E0F4FF"; e.currentTarget.style.color = "#2E9BFF"; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#94A3B8"; }}>
+                          className="p-1.5 rounded-lg transition-colors" style={{ color: "var(--nv-text-4)" }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--nv-blue-soft)"; e.currentTarget.style.color = "#2E9BFF"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--nv-text-4)"; }}>
                           <AdminIcon id="edit" size={15} />
                         </button>
                         <button onClick={() => deletePlan(plan.id)}
-                          className="p-1.5 rounded-lg transition-colors" style={{ color: "#94A3B8" }}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = "#FEE2E2"; e.currentTarget.style.color = "#FF6B6B"; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#94A3B8"; }}>
+                          className="p-1.5 rounded-lg transition-colors" style={{ color: "var(--nv-text-4)" }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--nv-red-soft)"; e.currentTarget.style.color = "#FF6B6B"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--nv-text-4)"; }}>
                           <AdminIcon id="trash" size={15} />
                         </button>
                       </div>

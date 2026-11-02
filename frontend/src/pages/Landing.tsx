@@ -126,16 +126,19 @@ function Header({ onSignUp, onLogin, onPlans, onAdmin, onPanel, esAdmin, conSesi
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-8">
-          {["Producto", "Nosotros"].map((item) => (
+          {[
+            { label: "Producto", href: "#producto" },
+            { label: "Nosotros", href: "#nosotros" },
+          ].map((item) => (
             <a
-              key={item}
-              href="#"
+              key={item.label}
+              href={item.href}
               className="text-sm font-medium transition-colors duration-150"
               style={{ color: "#334155" }}
               onMouseEnter={(e) => (e.currentTarget.style.color = "#2E9BFF")}
               onMouseLeave={(e) => (e.currentTarget.style.color = "#334155")}
             >
-              {item}
+              {item.label}
             </a>
           ))}
           <button
@@ -204,11 +207,20 @@ function Header({ onSignUp, onLogin, onPlans, onAdmin, onPanel, esAdmin, conSesi
       {/* Mobile menu */}
       {mobileOpen && (
         <div className="md:hidden border-t px-6 py-5 flex flex-col gap-4" style={{ background: "#F8FAFC", borderColor: "#E2E8F0" }}>
-          {["Producto", "Nosotros"].map((item) => (
-            <a key={item} href="#" className="text-sm font-medium" style={{ color: "#334155" }}>
-              {item}
+          {[
+            { label: "Producto", href: "#producto" },
+            { label: "Nosotros", href: "#nosotros" },
+          ].map((item) => (
+            <a
+              key={item.label}
+              href={item.href}
+              className="text-sm font-medium"
+              style={{ color: "#334155" }}
+              onClick={() => setMobileOpen(false)}
+            >
+              {item.label}
             </a>
-          ))}
+          ))}          
           <button onClick={onPlans} className="text-sm font-medium text-left" style={{ color: "#334155" }}>Planes</button>
           <hr style={{ borderColor: "#E2E8F0" }} />
           {!conSesion && <button onClick={onLogin} className="text-sm font-semibold text-left" style={{ color: "#334155" }}>Iniciar sesión</button>}
@@ -459,7 +471,7 @@ const FEATURES = [
 
 function Features() {
   return (
-    <section className="py-28" style={{ background: "#F8FAFC" }}>
+    <section id="producto" className="py-28 scroll-mt-20" style={{ background: "#F8FAFC" }}>
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-16 max-w-2xl mx-auto">
           <p className="text-sm font-semibold mb-3" style={{ color: "#2E9BFF" }}>CARACTERÍSTICAS</p>
@@ -505,11 +517,78 @@ function Features() {
     </section>
   );
 }
+function About() {
+  return (
+    <section
+      id="nosotros"
+      className="py-28 scroll-mt-20"
+      style={{ background: "white" }}
+    >
+      <div className="max-w-6xl mx-auto px-6">
+        <div className="max-w-3xl mx-auto text-center">
+          <p
+            className="text-sm font-semibold mb-3"
+            style={{ color: "#2E9BFF" }}
+          >
+            NOSOTROS
+          </p>
 
+          <h2
+            className="text-4xl font-extrabold leading-tight mb-6"
+            style={{
+              color: "#0F172A",
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+            }}
+          >
+            Hacemos más sencilla la gestión de tus archivos
+          </h2>
+
+          <p
+            className="text-base leading-relaxed mb-12"
+            style={{ color: "#475569" }}
+          >
+            NimbusVault es una plataforma de almacenamiento en la nube
+            diseñada para ayudar a los usuarios a organizar, administrar
+            y consultar sus archivos desde un solo lugar.
+          </p>
+
+          <div className="grid md:grid-cols-2 gap-6 text-left">
+            <div
+              className="rounded-2xl p-6"
+              style={{ background: "#F8FAFC", border: "1px solid #E2E8F0" }}
+            >
+              <h3 className="text-lg font-bold mb-3" style={{ color: "#0F172A" }}>
+                Nuestra misión
+              </h3>
+              <p className="text-sm leading-relaxed" style={{ color: "#64748B" }}>
+                Facilitar el almacenamiento y la organización de archivos
+                mediante una plataforma accesible y práctica.
+              </p>
+            </div>
+
+            <div
+              className="rounded-2xl p-6"
+              style={{ background: "#F8FAFC", border: "1px solid #E2E8F0" }}
+            >
+              <h3 className="text-lg font-bold mb-3" style={{ color: "#0F172A" }}>
+                Nuestro objetivo
+              </h3>
+              <p className="text-sm leading-relaxed" style={{ color: "#64748B" }}>
+                Ofrecer herramientas para administrar archivos, controlar
+                el espacio utilizado y elegir opciones de almacenamiento
+                según las necesidades de cada usuario.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
 // ── Pricing ──────────────────────────────────────────────────────────────────
 
 function Pricing({ onSignUp, onPlans }: { onSignUp: () => void; onPlans: () => void }) {
-  const { planes, cargando, error } = usePlanes();
+  const { planes, cargando, error, reintentar } = usePlanes();
   const PLANS = planes.map((p) => {
     const gratis = Number(p.precio_mensual) === 0;
     return {
@@ -527,7 +606,7 @@ function Pricing({ onSignUp, onPlans }: { onSignUp: () => void; onPlans: () => v
   });
 
   return (
-    <section className="py-28" style={{ background: "#E0F4FF" }}>
+    <section id="planes" className="py-28 scroll-mt-20" style={{ background: "#E0F4FF" }}>
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-16 max-w-2xl mx-auto">
           <p className="text-sm font-semibold mb-3" style={{ color: "#2E9BFF" }}>PLANES</p>
@@ -543,7 +622,19 @@ function Pricing({ onSignUp, onPlans }: { onSignUp: () => void; onPlans: () => v
         </div>
 
         {cargando && <p className="text-center text-sm" style={{ color: "#64748B" }}>Cargando planes…</p>}
-        {error && <p className="text-center text-sm font-semibold" style={{ color: "#E5484D" }}>No se pudieron cargar los planes.</p>}
+        {error && (
+          <div className="text-center">
+            <p className="text-sm font-semibold mb-3" style={{ color: "#E5484D" }}>
+              No se pudieron cargar los planes. El servidor puede estar despertando: lo intentamos de nuevo en unos segundos.
+            </p>
+            <button onClick={reintentar} className="text-sm font-bold px-5 py-2 rounded-xl text-white" style={{ background: "#2E9BFF" }}>
+              Reintentar ahora
+            </button>
+          </div>
+        )}
+        {!cargando && !error && PLANS.length === 0 && (
+          <p className="text-center text-sm" style={{ color: "#64748B" }}>Aún no hay planes disponibles.</p>
+        )}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 items-start">
           {PLANS.map(({ name, price, period, storage, desc, features, cta, featured, color, gratis }) => (
             <div
@@ -732,7 +823,11 @@ export default function Landing() {
       <main>
         <Hero onSignUp={() => navigate(usuario ? rutaInicio(usuario.rol) : "/registro")} />
         <Features />
-        <Pricing onSignUp={() => navigate("/registro")} onPlans={() => navigate("/planes")} />
+        <About />
+        <Pricing
+          onSignUp={() => navigate(usuario ? rutaInicio(usuario.rol) : "/registro")}
+          onPlans={() => navigate("/planes")}
+        />
       </main>
       <Footer />
     </div>

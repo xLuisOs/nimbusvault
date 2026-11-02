@@ -1,37 +1,66 @@
-import { useState, useMemo } from "react";
+// Historial de pagos (3.8). Los datos salen de GET /api/pagos; el comprobante, de GET /api/pagos/{id}/comprobante.
+import { useEffect, useMemo, useState } from "react";
+
+import { pagosApi } from "@/api/pagos";
+import { usePlanes } from "@/api/planes";
 import AppShell, { NavIcon } from "@/components/layout/AppShell";
+import { useAuth } from "@/context/AuthContext";
+import type { Pago } from "@/types";
+import { guardarBlob } from "@/utils/archivos";
+import { formatoDolares, formatoFecha } from "@/utils/format";
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 
 type PayStatus = "pagado" | "pendiente" | "fallido";
 
 interface Payment {
-  id: string;
+  id: string;           // id_pago
+  comprobante: string;
   date: string;         // ISO
   dateLabel: string;
   plan: string;
+  periodicidad: string;
   amount: number;
   status: PayStatus;
   method: string;
   last4: string;
 }
 
-const PAYMENTS: Payment[] = [
-  { id: "NV-2026-0091", date: "2026-09-01", dateLabel: "1 sep 2026",  plan: "Pro",      amount: 9,  status: "pagado",    method: "Visa",       last4: "4821" },
-  { id: "NV-2026-0078", date: "2026-08-01", dateLabel: "1 ago 2026",  plan: "Pro",      amount: 9,  status: "pagado",    method: "Visa",       last4: "4821" },
-  { id: "NV-2026-0065", date: "2026-07-01", dateLabel: "1 jul 2026",  plan: "Pro",      amount: 9,  status: "pagado",    method: "Mastercard", last4: "7734" },
-  { id: "NV-2026-0052", date: "2026-06-01", dateLabel: "1 jun 2026",  plan: "Personal", amount: 5,  status: "pagado",    method: "Mastercard", last4: "7734" },
-  { id: "NV-2026-0039", date: "2026-05-01", dateLabel: "1 may 2026",  plan: "Personal", amount: 5,  status: "fallido",   method: "Visa",       last4: "4821" },
-  { id: "NV-2026-0026", date: "2026-04-01", dateLabel: "1 abr 2026",  plan: "Personal", amount: 5,  status: "pagado",    method: "Visa",       last4: "4821" },
-  { id: "NV-2026-0013", date: "2026-03-01", dateLabel: "1 mar 2026",  plan: "Gratis",   amount: 0,  status: "pagado",    method: "Visa",       last4: "4821" },
-  { id: "NV-2026-0001", date: "2026-02-01", dateLabel: "1 feb 2026",  plan: "Gratis",   amount: 0,  status: "pendiente", method: "—",          last4: "—"    },
-];
+// Estados del backend → como los nombra la pantalla
+const ESTADOS: Record<Pago["estado"], PayStatus> = {
+  aprobado: "pagado",
+  pendiente: "pendiente",
+  rechazado: "fallido",
+};
+
+const MARCAS: Record<string, { label: string; color: string }> = {
+  visa:       { label: "Visa",       color: "#1A1F71" },
+  mastercard: { label: "Mastercard", color: "#EB001B" },
+  amex:       { label: "Amex",       color: "#007BC1" },
+  otra:       { label: "Tarjeta",    color: "var(--nv-text-3)" },
+};
+
+function aVista(p: Pago): Payment {
+  const fecha = p.fecha_pago ?? p.vigencia_inicio;
+  return {
+    id: p.id_pago,
+    comprobante: p.numero_comprobante,
+    date: fecha,
+    dateLabel: new Date(fecha).toLocaleDateString("es-GT", { day: "numeric", month: "short", year: "numeric" }),
+    plan: p.plan_nombre,
+    periodicidad: p.periodicidad,
+    amount: Number(p.monto),
+    status: ESTADOS[p.estado],
+    method: p.marca_tarjeta ?? "",
+    last4: p.ultimos_4 ?? "—",
+  };
+}
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 
 const STATUS_STYLE: Record<PayStatus, { bg: string; text: string; dot: string; label: string }> = {
   pagado:    { bg: "rgba(0,200,150,0.10)",  text: "#009971", dot: "#00C896", label: "Pagado"    },
-  pendiente: { bg: "rgba(251,191,36,0.12)", text: "#B45309", dot: "#FBBF24", label: "Pendiente" },
+  pendiente: { bg: "rgba(251,191,36,0.12)", text: "var(--nv-amber-strong)", dot: "#FBBF24", label: "Pendiente" },
   fallido:   { bg: "rgba(255,107,107,0.12)",text: "#DC2626", dot: "#FF6B6B", label: "Fallido"   },
 };
 
@@ -51,23 +80,24 @@ function StatusBadge({ status }: { status: PayStatus }) {
 // ── Summary cards ─────────────────────────────────────────────────────────────
 
 function SummaryCards({ payments }: { payments: Payment[] }) {
+  const { usuario } = useAuth();
   const total     = payments.reduce((s, p) => s + (p.status === "pagado" ? p.amount : 0), 0);
   const pending   = payments.filter((p) => p.status === "pendiente").length;
   const failed    = payments.filter((p) => p.status === "fallido").length;
-  const lastPlan  = payments.find((p) => p.status === "pagado")?.plan ?? "—";
+  const sus       = usuario?.suscripcion;
 
   const cards = [
-    { label: "Total pagado",      value: `$${total.toFixed(2)}`, sub: "historial completo",     color: "#00C896", bg: "#F0FDF9" },
-    { label: "Pagos pendientes",  value: String(pending),              sub: pending ? "requieren atención" : "todo al día", color: pending ? "#B45309" : "#00C896", bg: pending ? "#FFFBEB" : "#F0FDF9" },
-    { label: "Pagos fallidos",    value: String(failed),               sub: failed  ? "revisar método de pago" : "sin problemas",  color: failed  ? "#DC2626" : "#00C896", bg: failed  ? "#FEF2F2" : "#F0FDF9" },
-    { label: "Plan actual",       value: lastPlan,                     sub: "activo este mes",         color: "#2E9BFF", bg: "#E0F4FF" },
+    { label: "Total pagado",      value: formatoDolares(total.toFixed(2)), sub: "historial completo",     color: "#00C896", bg: "var(--nv-green-soft)" },
+    { label: "Pagos pendientes",  value: String(pending),              sub: pending ? "requieren atención" : "todo al día", color: pending ? "var(--nv-amber-strong)" : "#00C896", bg: pending ? "var(--nv-amber-soft)" : "var(--nv-green-soft)" },
+    { label: "Pagos fallidos",    value: String(failed),               sub: failed  ? "revisar método de pago" : "sin problemas",  color: failed  ? "#DC2626" : "#00C896", bg: failed  ? "var(--nv-red-soft)" : "var(--nv-green-soft)" },
+    { label: "Plan actual",       value: sus?.plan_nombre ?? "—",      sub: sus ? `vigente hasta el ${formatoFecha(sus.fecha_fin)}` : "sin plan activo", color: "#2E9BFF", bg: "var(--nv-blue-soft)" },
   ];
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      {cards.map(({ label, value, sub, color, bg }) => (
-        <div key={label} className="rounded-2xl p-5" style={{ background: "white", border: "1px solid #E2E8F0" }}>
-          <p className="text-xs font-semibold mb-2 uppercase tracking-widest" style={{ color: "#94A3B8" }}>{label}</p>
+      {cards.map(({ label, value, sub, color }) => (
+        <div key={label} className="rounded-2xl p-5" style={{ background: "var(--nv-surface)", border: "1px solid var(--nv-border)" }}>
+          <p className="text-xs font-semibold mb-2 uppercase tracking-widest" style={{ color: "var(--nv-text-4)" }}>{label}</p>
           <p
             className="text-2xl font-extrabold mb-0.5"
             style={{ color, fontFamily: "'Plus Jakarta Sans', sans-serif" }}
@@ -76,7 +106,7 @@ function SummaryCards({ payments }: { payments: Payment[] }) {
           </p>
           <div className="flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full" style={{ background: color }} />
-            <p className="text-xs" style={{ color: "#94A3B8" }}>{sub}</p>
+            <p className="text-xs" style={{ color: "var(--nv-text-4)" }}>{sub}</p>
           </div>
         </div>
       ))}
@@ -87,9 +117,9 @@ function SummaryCards({ payments }: { payments: Payment[] }) {
 // ── Filter bar ────────────────────────────────────────────────────────────────
 
 const SELECT_STYLE: React.CSSProperties = {
-  background: "white",
-  border: "1px solid #E2E8F0",
-  color: "#334155",
+  background: "var(--nv-surface)",
+  border: "1px solid var(--nv-border)",
+  color: "var(--nv-text-2)",
   borderRadius: "10px",
   padding: "8px 32px 8px 12px",
   fontSize: "13px",
@@ -103,6 +133,7 @@ interface FilterBarProps {
   status: string;
   plan: string;
   period: string;
+  planOptions: string[];
   onStatus: (v: string) => void;
   onPlan: (v: string) => void;
   onPeriod: (v: string) => void;
@@ -111,7 +142,7 @@ interface FilterBarProps {
   filtered: number;
 }
 
-function FilterBar({ status, plan, period, onStatus, onPlan, onPeriod, onReset, total, filtered }: FilterBarProps) {
+function FilterBar({ status, plan, period, planOptions, onStatus, onPlan, onPeriod, onReset, total, filtered }: FilterBarProps) {
   const hasFilter = status !== "all" || plan !== "all" || period !== "all";
 
   return (
@@ -125,21 +156,20 @@ function FilterBar({ status, plan, period, onStatus, onPlan, onPeriod, onReset, 
             <option value="pendiente">Pendiente</option>
             <option value="fallido">Fallido</option>
           </select>
-          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#94A3B8" }}>
+          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--nv-text-4)" }}>
             <NavIcon id="sort" size={12} />
           </span>
         </div>
 
-        {/* Plan */}
+        {/* Plan (nombres reales del catálogo y de los pagos) */}
         <div className="relative">
           <select value={plan} onChange={(e) => onPlan(e.target.value)} style={SELECT_STYLE}>
             <option value="all">Todos los planes</option>
-            <option value="Básico">Básico</option>
-            <option value="Personal">Personal</option>
-            <option value="Pro">Pro</option>
-            <option value="Business">Business</option>
+            {planOptions.map((nombre) => (
+              <option key={nombre} value={nombre}>{nombre}</option>
+            ))}
           </select>
-          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#94A3B8" }}>
+          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--nv-text-4)" }}>
             <NavIcon id="sort" size={12} />
           </span>
         </div>
@@ -152,7 +182,7 @@ function FilterBar({ status, plan, period, onStatus, onPlan, onPeriod, onReset, 
             <option value="6m">Últimos 6 meses</option>
             <option value="1y">Último año</option>
           </select>
-          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#94A3B8" }}>
+          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--nv-text-4)" }}>
             <NavIcon id="sort" size={12} />
           </span>
         </div>
@@ -161,9 +191,9 @@ function FilterBar({ status, plan, period, onStatus, onPlan, onPeriod, onReset, 
           <button
             onClick={onReset}
             className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg transition-colors"
-            style={{ color: "#94A3B8", background: "#F1F5F9" }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "#E2E8F0"; e.currentTarget.style.color = "#334155"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "#F1F5F9"; e.currentTarget.style.color = "#94A3B8"; }}
+            style={{ color: "var(--nv-text-4)", background: "var(--nv-muted)" }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--nv-border)"; e.currentTarget.style.color = "var(--nv-text-2)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "var(--nv-muted)"; e.currentTarget.style.color = "var(--nv-text-4)"; }}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
@@ -173,10 +203,10 @@ function FilterBar({ status, plan, period, onStatus, onPlan, onPeriod, onReset, 
         )}
       </div>
 
-      <p className="text-xs" style={{ color: "#94A3B8" }}>
+      <p className="text-xs" style={{ color: "var(--nv-text-4)" }}>
         {filtered === total
           ? `${total} registros`
-          : <><span className="font-semibold" style={{ color: "#334155" }}>{filtered}</span> de {total} registros</>}
+          : <><span className="font-semibold" style={{ color: "var(--nv-text-2)" }}>{filtered}</span> de {total} registros</>}
       </p>
     </div>
   );
@@ -186,27 +216,36 @@ function FilterBar({ status, plan, period, onStatus, onPlan, onPeriod, onReset, 
 
 function PaymentRow({ payment, idx }: { payment: Payment; idx: number }) {
   const [downloading, setDownloading] = useState(false);
+  const [error, setError] = useState("");
 
-  function handleDownload() {
-    if (payment.status !== "pagado") return;
+  async function handleDownload() {
+    if (payment.status !== "pagado" || downloading) return;
     setDownloading(true);
-    setTimeout(() => setDownloading(false), 1200);
+    setError("");
+    try {
+      guardarBlob(await pagosApi.comprobante(payment.id), `comprobante-${payment.comprobante}.pdf`);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setDownloading(false);
+    }
   }
 
   const canDownload = payment.status === "pagado";
+  const marca = MARCAS[payment.method];
 
   return (
     <tr
       className="group transition-colors duration-100"
-      style={{ background: idx % 2 === 0 ? "white" : "#FAFBFC" }}
-      onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = "#F0F9FF"; }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = idx % 2 === 0 ? "white" : "#FAFBFC"; }}
+      style={{ background: idx % 2 === 0 ? "var(--nv-surface)" : "var(--nv-bg)" }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = "var(--nv-bg)"; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = idx % 2 === 0 ? "var(--nv-surface)" : "var(--nv-bg)"; }}
     >
       {/* Fecha */}
       <td className="px-5 py-4">
         <div>
-          <p className="text-sm font-medium" style={{ color: "#0F172A" }}>{payment.dateLabel}</p>
-          <p className="text-xs mt-0.5" style={{ color: "#94A3B8" }}>{payment.id}</p>
+          <p className="text-sm font-medium" style={{ color: "var(--nv-text-1)" }}>{payment.dateLabel}</p>
+          <p className="text-xs mt-0.5 font-mono" style={{ color: "var(--nv-text-4)" }}>{payment.comprobante}</p>
         </div>
       </td>
 
@@ -215,11 +254,14 @@ function PaymentRow({ payment, idx }: { payment: Payment; idx: number }) {
         <div className="flex items-center gap-2">
           <div
             className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{ background: "linear-gradient(135deg, #E0F4FF, #ddfaf7)", border: "1px solid #BAE6FD" }}
+            style={{ background: "linear-gradient(135deg, var(--nv-blue-soft), var(--nv-teal-soft))", border: "1px solid var(--nv-blue-border)" }}
           >
             <NavIcon id="cloud" size={13} />
           </div>
-          <span className="text-sm font-semibold" style={{ color: "#334155" }}>Plan {payment.plan}</span>
+          <div>
+            <span className="text-sm font-semibold" style={{ color: "var(--nv-text-2)" }}>Plan {payment.plan}</span>
+            <p className="text-[10px] capitalize" style={{ color: "var(--nv-text-4)" }}>{payment.periodicidad}</p>
+          </div>
         </div>
       </td>
 
@@ -227,7 +269,7 @@ function PaymentRow({ payment, idx }: { payment: Payment; idx: number }) {
       <td className="px-5 py-4">
         <span
           className="text-sm font-extrabold"
-          style={{ color: "#0F172A", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+          style={{ color: "var(--nv-text-1)", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
         >
           ${payment.amount.toFixed(2)}
         </span>
@@ -235,21 +277,18 @@ function PaymentRow({ payment, idx }: { payment: Payment; idx: number }) {
 
       {/* Método */}
       <td className="px-5 py-4 hidden md:table-cell">
-        {payment.last4 !== "—" ? (
+        {marca ? (
           <div className="flex items-center gap-1.5">
             <div
               className="px-1.5 py-0.5 rounded text-[10px] font-extrabold"
-              style={{
-                background: payment.method === "Visa" ? "#1A1F7110" : "#EB001B10",
-                color: payment.method === "Visa" ? "#1A1F71" : "#EB001B",
-              }}
+              style={{ background: marca.color + "10", color: marca.color }}
             >
-              {payment.method}
+              {marca.label}
             </div>
-            <span className="text-xs" style={{ color: "#94A3B8" }}>•••• {payment.last4}</span>
+            <span className="text-xs" style={{ color: "var(--nv-text-4)" }}>•••• {payment.last4}</span>
           </div>
         ) : (
-          <span className="text-xs" style={{ color: "#CBD5E1" }}>—</span>
+          <span className="text-xs" style={{ color: "var(--nv-border-strong)" }}>—</span>
         )}
       </td>
 
@@ -265,13 +304,13 @@ function PaymentRow({ payment, idx }: { payment: Payment; idx: number }) {
           disabled={!canDownload}
           className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all duration-150"
           style={{
-            background: canDownload ? "#E0F4FF" : "#F8FAFC",
-            color: canDownload ? "#2E9BFF" : "#CBD5E1",
+            background: canDownload ? "var(--nv-blue-soft)" : "var(--nv-bg)",
+            color: canDownload ? "#2E9BFF" : "var(--nv-border-strong)",
             cursor: canDownload ? "pointer" : "not-allowed",
           }}
-          onMouseEnter={(e) => { if (canDownload) { e.currentTarget.style.background = "#BAE6FD"; } }}
-          onMouseLeave={(e) => { if (canDownload) { e.currentTarget.style.background = "#E0F4FF"; } }}
-          title={canDownload ? "Descargar comprobante" : "Sin comprobante disponible"}
+          onMouseEnter={(e) => { if (canDownload) { e.currentTarget.style.background = "var(--nv-blue-border)"; } }}
+          onMouseLeave={(e) => { if (canDownload) { e.currentTarget.style.background = "var(--nv-blue-soft)"; } }}
+          title={error || (canDownload ? "Descargar comprobante" : "Sin comprobante disponible")}
         >
           {downloading ? (
             <svg className="animate-spin" width="13" height="13" viewBox="0 0 13 13" fill="none">
@@ -283,8 +322,25 @@ function PaymentRow({ payment, idx }: { payment: Payment; idx: number }) {
           )}
           <span className="hidden sm:inline">{canDownload ? "PDF" : "N/A"}</span>
         </button>
+        {error && <p className="text-[10px] mt-1" style={{ color: "#DC2626" }}>No se pudo descargar</p>}
       </td>
     </tr>
+  );
+}
+
+function EstadoVacio({ titulo, texto, accion }: { titulo: string; texto: string; accion?: React.ReactNode }) {
+  return (
+    <div
+      className="rounded-2xl flex flex-col items-center justify-center py-20 text-center"
+      style={{ background: "var(--nv-surface)", border: "1px solid var(--nv-border)" }}
+    >
+      <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4" style={{ background: "var(--nv-muted)", color: "var(--nv-border-strong)" }}>
+        <NavIcon id="card" size={28} />
+      </div>
+      <p className="text-sm font-semibold" style={{ color: "var(--nv-text-2)" }}>{titulo}</p>
+      <p className="text-xs mt-1" style={{ color: "var(--nv-text-4)" }}>{texto}</p>
+      {accion}
+    </div>
   );
 }
 
@@ -292,34 +348,20 @@ function PaymentsTable({ payments }: { payments: Payment[] }) {
   const headers = ["Fecha", "Plan", "Monto", "Método", "Estado", "Comprobante"];
 
   if (payments.length === 0) {
-    return (
-      <div
-        className="rounded-2xl flex flex-col items-center justify-center py-20 text-center"
-        style={{ background: "white", border: "1px solid #E2E8F0" }}
-      >
-        <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4" style={{ background: "#F1F5F9", color: "#CBD5E1" }}>
-          <NavIcon id="card" size={28} />
-        </div>
-        <p className="text-sm font-semibold" style={{ color: "#334155" }}>Sin resultados</p>
-        <p className="text-xs mt-1" style={{ color: "#94A3B8" }}>No hay pagos que coincidan con los filtros aplicados.</p>
-      </div>
-    );
+    return <EstadoVacio titulo="Sin resultados" texto="No hay pagos que coincidan con los filtros aplicados." />;
   }
 
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid #E2E8F0" }}>
+    <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--nv-border)" }}>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>
-            <tr style={{ background: "#F8FAFC", borderBottom: "1px solid #E2E8F0" }}>
+            <tr style={{ background: "var(--nv-bg)", borderBottom: "1px solid var(--nv-border)" }}>
               {headers.map((h, i) => (
                 <th
                   key={h}
-                  className="px-5 py-3.5 text-left text-[10px] font-bold uppercase tracking-widest"
-                  style={{
-                    color: "#334155",
-                    display: i === 3 ? undefined : undefined,
-                  }}
+                  className={`px-5 py-3.5 text-left text-[10px] font-bold uppercase tracking-widest ${i === 3 ? "hidden md:table-cell" : ""}`}
+                  style={{ color: "var(--nv-text-2)" }}
                 >
                   {h}
                 </th>
@@ -337,15 +379,15 @@ function PaymentsTable({ payments }: { payments: Payment[] }) {
       {/* Table footer */}
       <div
         className="flex items-center justify-between px-5 py-3.5"
-        style={{ borderTop: "1px solid #F1F5F9", background: "#FAFBFC" }}
+        style={{ borderTop: "1px solid var(--nv-muted)", background: "var(--nv-bg)" }}
       >
-        <p className="text-xs" style={{ color: "#94A3B8" }}>
-          Mostrando <span className="font-semibold" style={{ color: "#334155" }}>{payments.length}</span> pagos
+        <p className="text-xs" style={{ color: "var(--nv-text-4)" }}>
+          Mostrando <span className="font-semibold" style={{ color: "var(--nv-text-2)" }}>{payments.length}</span> pagos
         </p>
-        <div className="flex items-center gap-1.5 text-xs" style={{ color: "#94A3B8" }}>
+        <div className="flex items-center gap-1.5 text-xs" style={{ color: "var(--nv-text-4)" }}>
           <div className="w-2 h-2 rounded-full" style={{ background: "#00C896" }} />
           Total cobrado:{" "}
-          <span className="font-bold" style={{ color: "#0F172A" }}>
+          <span className="font-bold" style={{ color: "var(--nv-text-1)" }}>
             ${payments.filter((p) => p.status === "pagado").reduce((s, p) => s + p.amount, 0).toFixed(2)}
           </span>
         </div>
@@ -354,13 +396,12 @@ function PaymentsTable({ payments }: { payments: Payment[] }) {
   );
 }
 
-// ── Next payment banner ───────────────────────────────────────────────────────
+// ── Current plan banner ───────────────────────────────────────────────────────
 
-function NextPaymentBanner({ onPlans }: { onPlans: () => void }) {
-  const next = new Date();
-  next.setMonth(next.getMonth() + 1);
-  next.setDate(1);
-  const label = next.toLocaleDateString("es-GT", { day: "numeric", month: "long", year: "numeric" });
+function CurrentPlanBanner({ onPlans }: { onPlans: () => void }) {
+  const { usuario } = useAuth();
+  const sus = usuario?.suscripcion;
+  const gratis = !sus || Number(sus.precio_contratado) === 0;
 
   return (
     <div
@@ -378,33 +419,45 @@ function NextPaymentBanner({ onPlans }: { onPlans: () => void }) {
           <NavIcon id="card" size={20} />
         </div>
         <div>
-          <p className="text-xs font-semibold mb-0.5" style={{ color: "#93C5FD" }}>PRÓXIMO COBRO</p>
-          <p className="text-sm font-bold text-white">
-            Plan Pro — <span style={{ color: "#4DB8FF" }}>$9.00</span> el {label}
-          </p>
+          <p className="text-xs font-semibold mb-0.5" style={{ color: "var(--nv-blue-border)" }}>TU PLAN</p>
+          {sus ? (
+            <p className="text-sm font-bold text-white">
+              Plan {sus.plan_nombre} —{" "}
+              <span style={{ color: "#4DB8FF" }}>{gratis ? "sin costo" : formatoDolares(sus.precio_contratado)}</span>
+              {" "}· vigente hasta el {formatoFecha(sus.fecha_fin)}
+            </p>
+          ) : (
+            <p className="text-sm font-bold text-white">No tienes un plan activo</p>
+          )}
         </div>
       </div>
-      <div className="flex items-center gap-3">
-        <button
-          className="text-xs font-semibold px-4 py-2 rounded-xl transition-all duration-150"
-          style={{ background: "rgba(255,255,255,0.08)", color: "#93C5FD", border: "1px solid rgba(255,255,255,0.12)" }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.14)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
-        >
-          Actualizar método de pago
-        </button>
-        <button
-          onClick={onPlans}
-          className="text-xs font-bold px-4 py-2 rounded-xl text-white transition-all duration-150"
-          style={{ background: "#2E9BFF" }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "#1E6BD6"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "#2E9BFF"; }}
-        >
-          Cambiar plan
-        </button>
-      </div>
+      <button
+        onClick={onPlans}
+        className="text-xs font-bold px-4 py-2 rounded-xl text-white transition-all duration-150"
+        style={{ background: "#2E9BFF" }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = "#1E6BD6"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = "#2E9BFF"; }}
+      >
+        {gratis ? "Mejorar plan" : "Cambiar plan"}
+      </button>
     </div>
   );
+}
+
+// ── CSV ───────────────────────────────────────────────────────────────────────
+
+function exportarCsv(payments: Payment[]) {
+  const celda = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
+  const filas = [
+    ["Comprobante", "Fecha", "Plan", "Periodicidad", "Monto (USD)", "Estado", "Método", "Últimos 4"],
+    ...payments.map((p) => [
+      p.comprobante, p.date.slice(0, 10), p.plan, p.periodicidad, p.amount.toFixed(2),
+      STATUS_STYLE[p.status].label, MARCAS[p.method]?.label ?? "", p.last4,
+    ]),
+  ];
+  // BOM para que Excel respete los acentos
+  const csv = "﻿" + filas.map((f) => f.map(celda).join(",")).join("\r\n");
+  guardarBlob(new Blob([csv], { type: "text/csv;charset=utf-8" }), "historial-de-pagos.csv");
 }
 
 // ── Root export ───────────────────────────────────────────────────────────────
@@ -413,13 +466,38 @@ interface PaymentsProps {
   onLogout: () => void;
   onDashboard: () => void;
   onPlans: () => void;
+  onFiles?: () => void;
   onConsumption?: () => void;
 }
 
-export default function Payments({ onLogout, onDashboard, onPlans, onConsumption }: PaymentsProps) {
+export default function Payments({ onLogout, onDashboard, onPlans, onFiles, onConsumption }: PaymentsProps) {
+  const { planes } = usePlanes();
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [version, setVersion] = useState(0);
+
   const [statusFilter, setStatusFilter] = useState("all");
   const [planFilter, setPlanFilter] = useState("all");
   const [periodFilter, setPeriodFilter] = useState("all");
+
+  useEffect(() => {
+    let vivo = true;
+    setCargando(true);
+    setError(null);
+    pagosApi
+      .listar()
+      .then((p) => vivo && setPayments(p.map(aVista)))
+      .catch((e) => vivo && setError(e.message))
+      .finally(() => vivo && setCargando(false));
+    return () => { vivo = false; };
+  }, [version]);
+
+  // Planes del catálogo + los de pagos viejos (un plan desactivado sigue en el historial)
+  const planOptions = useMemo(
+    () => Array.from(new Set([...planes.filter((p) => Number(p.precio_mensual) > 0).map((p) => p.nombre), ...payments.map((p) => p.plan)])),
+    [planes, payments],
+  );
 
   const filtered = useMemo(() => {
     const cutoff = new Date();
@@ -427,17 +505,18 @@ export default function Payments({ onLogout, onDashboard, onPlans, onConsumption
     else if (periodFilter === "6m") cutoff.setMonth(cutoff.getMonth() - 6);
     else if (periodFilter === "1y") cutoff.setFullYear(cutoff.getFullYear() - 1);
 
-    return PAYMENTS.filter((p) => {
+    return payments.filter((p) => {
       if (statusFilter !== "all" && p.status !== statusFilter) return false;
       if (planFilter !== "all" && p.plan !== planFilter) return false;
       if (periodFilter !== "all" && new Date(p.date) < cutoff) return false;
       return true;
     });
-  }, [statusFilter, planFilter, periodFilter]);
+  }, [payments, statusFilter, planFilter, periodFilter]);
 
   function handleNav(id: string) {
     if (id === "dashboard") onDashboard();
     else if (id === "plans") onPlans();
+    else if (id === "files" && onFiles) onFiles();
     else if (id === "consumption" && onConsumption) onConsumption();
   }
 
@@ -446,60 +525,100 @@ export default function Payments({ onLogout, onDashboard, onPlans, onConsumption
       activeNav="payments"
       onNav={handleNav}
       onLogout={onLogout}
-      onUpload={() => {}}
+      onUpload={() => onFiles?.()}
       headerTitle="Historial de pagos"
     >
       <main className="flex-1 overflow-y-auto p-6">
         <div className="max-w-5xl mx-auto">
 
-          {/* Next payment */}
-          <NextPaymentBanner onPlans={onPlans} />
+          {/* Current plan */}
+          <CurrentPlanBanner onPlans={onPlans} />
 
           {/* Summary cards */}
-          <SummaryCards payments={PAYMENTS} />
+          <SummaryCards payments={payments} />
 
           {/* Table section */}
           <div
             className="rounded-2xl p-6"
-            style={{ background: "white", border: "1px solid #E2E8F0" }}
+            style={{ background: "var(--nv-surface)", border: "1px solid var(--nv-border)" }}
           >
             {/* Section header */}
             <div className="flex items-center justify-between mb-5">
               <div>
                 <h2
                   className="text-base font-extrabold"
-                  style={{ color: "#0F172A", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                  style={{ color: "var(--nv-text-1)", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
                 >
                   Todos los pagos
                 </h2>
-                <p className="text-xs mt-0.5" style={{ color: "#94A3B8" }}>
-                  Registro completo de transacciones de tu cuenta
+                <p className="text-xs mt-0.5" style={{ color: "var(--nv-text-4)" }}>
+                  Registro completo de transacciones de tu cuenta (pagos simulados, en USD)
                 </p>
               </div>
               <button
+                onClick={() => exportarCsv(filtered)}
+                disabled={filtered.length === 0}
                 className="flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-xl transition-all duration-150"
-                style={{ color: "#2E9BFF", border: "1.5px solid #2E9BFF", background: "white" }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "#E0F4FF"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "white"; }}
+                style={{
+                  color: "#2E9BFF", border: "1.5px solid #2E9BFF", background: "var(--nv-surface)",
+                  opacity: filtered.length === 0 ? 0.5 : 1, cursor: filtered.length === 0 ? "not-allowed" : "pointer",
+                }}
+                onMouseEnter={(e) => { if (filtered.length) e.currentTarget.style.background = "var(--nv-blue-soft)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "var(--nv-surface)"; }}
               >
                 <NavIcon id="download" size={13} />
                 Exportar CSV
               </button>
             </div>
 
-            <FilterBar
-              status={statusFilter}
-              plan={planFilter}
-              period={periodFilter}
-              onStatus={setStatusFilter}
-              onPlan={setPlanFilter}
-              onPeriod={setPeriodFilter}
-              onReset={() => { setStatusFilter("all"); setPlanFilter("all"); setPeriodFilter("all"); }}
-              total={PAYMENTS.length}
-              filtered={filtered.length}
-            />
+            {cargando ? (
+              <p className="text-center text-xs py-20" style={{ color: "var(--nv-text-4)" }}>Cargando pagos…</p>
+            ) : error ? (
+              <EstadoVacio
+                titulo="No se pudo cargar el historial"
+                texto={error}
+                accion={
+                  <button
+                    onClick={() => setVersion((v) => v + 1)}
+                    className="mt-4 px-4 py-2 rounded-lg text-xs font-bold text-white"
+                    style={{ background: "#2E9BFF" }}
+                  >
+                    Reintentar
+                  </button>
+                }
+              />
+            ) : payments.length === 0 ? (
+              <EstadoVacio
+                titulo="Aún no tienes pagos"
+                texto="El plan Gratis no genera cobros. Cuando contrates un plan, tus comprobantes aparecerán aquí."
+                accion={
+                  <button
+                    onClick={onPlans}
+                    className="mt-4 px-4 py-2 rounded-lg text-xs font-bold text-white"
+                    style={{ background: "#2E9BFF" }}
+                  >
+                    Ver planes
+                  </button>
+                }
+              />
+            ) : (
+              <>
+                <FilterBar
+                  status={statusFilter}
+                  plan={planFilter}
+                  period={periodFilter}
+                  planOptions={planOptions}
+                  onStatus={setStatusFilter}
+                  onPlan={setPlanFilter}
+                  onPeriod={setPeriodFilter}
+                  onReset={() => { setStatusFilter("all"); setPlanFilter("all"); setPeriodFilter("all"); }}
+                  total={payments.length}
+                  filtered={filtered.length}
+                />
 
-            <PaymentsTable payments={filtered} />
+                <PaymentsTable payments={filtered} />
+              </>
+            )}
           </div>
 
         </div>

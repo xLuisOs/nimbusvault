@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import BotonTema from "@/components/BotonTema";
 import { useAuth } from "@/context/AuthContext";
 import { iniciales } from "@/utils/format";
 
@@ -148,7 +149,7 @@ export default function AdminShell({ activeNav, onNav, onLogout, title, headerRi
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "#F8FAFC", fontFamily: "'Inter', sans-serif" }}>
+    <div className="nv-app flex h-screen overflow-hidden" style={{ background: "var(--nv-bg)", fontFamily: "'Inter', sans-serif" }}>
       {/* Desktop sidebar */}
       <div className="hidden lg:block">
         <AdminSidebar active={activeNav} onNav={onNav} onLogout={onLogout} />
@@ -170,32 +171,32 @@ export default function AdminShell({ activeNav, onNav, onLogout, title, headerRi
         <header
           className="sticky top-0 z-20 flex items-center justify-between px-6 h-16 flex-shrink-0"
           style={{
-            background: "rgba(248,250,252,0.94)",
+            background: "color-mix(in srgb, var(--nv-bg) 94%, transparent)",
             backdropFilter: "blur(12px)",
-            borderBottom: "1px solid #E2E8F0",
+            borderBottom: "1px solid var(--nv-border)",
           }}
         >
           <div className="flex items-center gap-4">
             <button
               className="lg:hidden p-2 rounded-lg"
-              style={{ color: "#64748B" }}
+              style={{ color: "var(--nv-text-3)" }}
               onClick={() => setMobileOpen(true)}
             >
               <AdminIcon id="menu" size={20} />
             </button>
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#94A3B8" }}>
+              <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--nv-text-4)" }}>
                 Panel de administración
               </p>
               <h1
                 className="text-base font-extrabold leading-tight"
-                style={{ color: "#0F172A", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                style={{ color: "var(--nv-text-1)", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
               >
                 {title}
               </h1>
             </div>
           </div>
-          <div className="flex items-center gap-3">{headerRight}</div>
+          <div className="flex items-center gap-3"><BotonTema />{headerRight}</div>
         </header>
 
         {/* Content */}

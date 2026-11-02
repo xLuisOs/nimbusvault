@@ -1,0 +1,64 @@
+# Infraestructura de NimbusVault en Render (Blueprint).
+# Render lee este archivo y crea la API y el frontend. La base de datos es PostgreSQL en Supabase.
+# Guía paso a paso: docs/despliegue.md
+#
+#   navegador ──https──> nimbusvault-web (nginx) ──/api──> nimbusvault-api (FastAPI) ──> Supabase PostgreSQL
+#                                                                   └──> Supabase Storage (archivos)
+#                                                                   └──> Brevo (correos)
+
+services:
+  - type: web
+    name: nimbusvault-api
+    runtime: docker
+    plan: free
+    region: virginia      # misma zona que Supabase (us-east-1): cada consulta viaja poco
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: ENTORNO
+        value: produccion
+      - key: JWT_SECRET
+        generateValue: true
+      - key: COOKIE_SECURE
+        value: "true"
+      # URL pública del frontend: se usa en los enlaces de los correos
+      - key: FRONTEND_URL
+        value: https://nimbusvault-web.onrender.com
+      - key: CORS_ORIGINS
+        value: https://nimbusvault-web.onrender.com
+      - key: EMAIL_BACKEND
+        value: brevo
+      # Valores secretos: Render los pide al crear el Blueprint (sync: false = no viven en el repo)
+      # DATABASE_URL: "Session pooler" de Supabase (puerto 5432); la conexión directa es solo IPv6
+      - key: DATABASE_URL
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: EMAIL_REMITENTE
+        sync: false
+      - key: S3_ENDPOINT_URL
+        sync: false
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: S3_BUCKET
+        value: nimbusvault
+      - key: ADMIN_CORREO
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+
+  - type: web
+    name: nimbusvault-web
+    runtime: docker
+    plan: free
+    region: virginia
+    dockerContext: ./frontend
+    dockerfilePath: ./frontend/Dockerfile
+    envVars:
+      # nginx reenvía /api a la API, así navegador, front y API comparten dominio.
+      # Ojo: el nombre "nimbusvault-api" ya estaba ocupado en Render, por eso la URL lleva sufijo.
+      - key: API_UPSTREAM
+        value: https://nimbusvault-api-7b7k.onrender.com

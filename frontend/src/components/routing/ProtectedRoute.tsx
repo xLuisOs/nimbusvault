@@ -14,8 +14,16 @@ export function PantallaCarga() {
   );
 }
 
+// Pantalla de inicio de cada rol. Los roles sin panel propio (SOPORTE) van a /sin-acceso,
+// que no exige rol: así nunca se redirige a una ruta que a su vez los vuelva a rechazar.
+const INICIO_POR_ROL: Partial<Record<Rol, string>> = {
+  ADMINISTRADOR: "/admin",
+  CLIENTE: "/dashboard",
+};
+export const RUTA_SIN_ACCESO = "/sin-acceso";
+
 export function rutaInicio(rol: Rol) {
-  return rol === "ADMINISTRADOR" ? "/admin" : "/dashboard";
+  return INICIO_POR_ROL[rol] ?? RUTA_SIN_ACCESO;
 }
 
 /** Solo deja pasar si hay sesión (y, si se indica, si el rol coincide). */

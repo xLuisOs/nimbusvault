@@ -1,9 +1,10 @@
 import { useState } from "react";
-import type { CheckoutPlan } from "./Checkout";
 import { usePlanes } from "@/api/planes";
 import type { Plan } from "@/types";
 import { formatoGB, formatoDolares } from "@/utils/format";
-
+import AppShell from "@/components/layout/AppShell";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 // ── Data ──────────────────────────────────────────────────────────────────────
 // El catálogo viene de la API (GET /api/planes). Aquí solo lo adaptamos a lo que dibujan las tarjetas.
 
@@ -19,6 +20,7 @@ interface PlanVista {
   features: string[];
   gb: number;
   vigencia: number;
+  discountPct: number;
 }
 
 function aVista(p: Plan): PlanVista {
@@ -34,7 +36,16 @@ function aVista(p: Plan): PlanVista {
     features: p.caracteristicas,
     gb: p.almacenamiento_gb,
     vigencia: p.vigencia_dias,
+    discountPct: p.descuento_anual_pct,
   };
+}
+
+/** Texto del descuento anual para el interruptor, según lo que diga cada plan de pago. */
+function etiquetaDescuento(plans: PlanVista[]): string | null {
+  const descuentos = plans.filter((p) => p.price > 0 && p.discountPct > 0).map((p) => p.discountPct);
+  if (!descuentos.length) return null;
+  const max = Math.max(...descuentos);
+  return descuentos.every((d) => d === max) ? `−${max}%` : `hasta −${max}%`;
 }
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
@@ -136,9 +147,11 @@ function Header({ onHome, onLogin, onSignUp }: HeaderProps) {
 function BillingToggle({
   annual,
   onChange,
+  descuento,
 }: {
   annual: boolean;
   onChange: (v: boolean) => void;
+  descuento: string | null;
 }) {
   return (
     <div className="flex items-center gap-3 justify-center">
@@ -157,7 +170,7 @@ function BillingToggle({
         aria-checked={annual}
       >
         <span
-          className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200"
+          className="absolute top-0.5 left-0 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200"
           style={{ transform: annual ? "translateX(26px)" : "translateX(2px)" }}
         />
       </button>
@@ -167,12 +180,14 @@ function BillingToggle({
         style={{ color: annual ? "#0F172A" : "#94A3B8" }}
       >
         Anual
-        <span
-          className="text-xs font-bold px-1.5 py-0.5 rounded-full"
-          style={{ background: "#E0FBF9", color: "#00C896" }}
-        >
-          −20%
-        </span>
+        {descuento && (
+          <span
+            className="text-xs font-bold px-1.5 py-0.5 rounded-full"
+            style={{ background: "#E0FBF9", color: "#00C896" }}
+          >
+            {descuento}
+          </span>
+        )}
       </button>
     </div>
   );
@@ -490,27 +505,53 @@ interface PlansProps {
   onHome: () => void;
   onLogin: () => void;
   onSignUp: () => void;
-  onCheckout: (plan: CheckoutPlan) => void;
+  onCheckout: (codigo: string, annual: boolean) => void;
+  inPanel?: boolean;
 }
 
-export default function Plans({ onHome, onLogin, onSignUp, onCheckout }: PlansProps) {
+export default function Plans({ onHome, onLogin, onSignUp, onCheckout, inPanel = false, }: PlansProps) {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+
+  function handleNav(id: string) {
+    const rutas: Record<string, string> = {
+      dashboard: "/dashboard",
+      files: "/archivos",
+      consumption: "/consumo",
+      plans: "/cliente/planes",
+      payments: "/pagos",
+      settings: "/configuracion",
+    };
+
+    const ruta = rutas[id];
+    if (ruta) navigate(ruta);
+  }
   const [annual, setAnnual] = useState(false);
-  const { planes, cargando, error } = usePlanes();
+  const { planes, cargando, error, reintentar } = usePlanes();
   const PLANS = planes.map(aVista);
 
   function handleSelect(id: string) {
     const p = PLANS.find((x) => x.id === id);
     if (!p) return;
-    if (p.price === 0) { onSignUp(); return; }
-    onCheckout({
-      id: p.id, name: p.name, storage: p.storage, color: p.color, colorBg: p.colorBg,
-      annual, price: annual ? p.priceAnnual : p.price,
-    });
+    if (p.price === 0) {
+      if (!inPanel) onSignUp();
+      return;
+    }
+    // El checkout vuelve a pedir el plan a la API: no se confía en el precio que trae el navegador
+    onCheckout(p.id, annual);
   }
-
-  return (
-    <div className="min-h-screen" style={{ background: "#F8FAFC" }}>
-      <Header onHome={onHome} onLogin={onLogin} onSignUp={onSignUp} />
+  const contenido = (
+    <div
+      className={inPanel ? "min-h-full" : "min-h-screen"}
+      style={{ background: "#F8FAFC" }}
+    >
+      {!inPanel && (
+        <Header
+          onHome={onHome}
+          onLogin={onLogin}
+          onSignUp={onSignUp}
+        />
+      )}
 
       {/* Hero */}
       <section className="pt-20 pb-16 text-center px-6">
@@ -520,9 +561,13 @@ export default function Plans({ onHome, onLogin, onSignUp, onCheckout }: PlansPr
         >
           Planes y precios
         </p>
+
         <h1
           className="text-4xl md:text-5xl font-extrabold leading-tight mb-4 max-w-2xl mx-auto"
-          style={{ color: "#0F172A", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+          style={{
+            color: "#0F172A",
+            fontFamily: "'Plus Jakarta Sans', sans-serif",
+          }}
         >
           Elige el plan que{" "}
           <span
@@ -536,26 +581,63 @@ export default function Plans({ onHome, onLogin, onSignUp, onCheckout }: PlansPr
             se ajuste a ti
           </span>
         </h1>
+
         <p
           className="text-base mb-10 max-w-lg mx-auto"
           style={{ color: "#64748B" }}
         >
           Sin costes ocultos. Cancela cuando quieras. Empieza gratis hoy mismo.
         </p>
-        <BillingToggle annual={annual} onChange={setAnnual} />
+
+        <BillingToggle
+          annual={annual}
+          onChange={setAnnual}
+          descuento={etiquetaDescuento(PLANS)}
+        />
       </section>
 
       {/* Cards */}
       <section className="max-w-6xl mx-auto px-6 pb-24">
-        {cargando && <p className="text-center text-sm py-16" style={{ color: "#94A3B8" }}>Cargando planes…</p>}
-        {error && (
-          <p className="text-center text-sm py-16 font-semibold" style={{ color: "#E5484D" }}>
-            No se pudieron cargar los planes: {error}
+        {cargando && (
+          <p
+            className="text-center text-sm py-16"
+            style={{ color: "#94A3B8" }}
+          >
+            Cargando planes…
           </p>
         )}
+
+        {error && (
+          <div className="text-center py-16">
+            <p className="text-sm font-semibold mb-3" style={{ color: "#E5484D" }}>
+              No se pudieron cargar los planes: {error}
+            </p>
+            <p className="text-xs mb-4" style={{ color: "#94A3B8" }}>
+              El servidor puede estar despertando: lo intentamos de nuevo en unos segundos.
+            </p>
+            <button onClick={reintentar} className="text-sm font-bold px-5 py-2 rounded-xl text-white" style={{ background: "#2E9BFF" }}>
+              Reintentar ahora
+            </button>
+          </div>
+        )}
+
+        {!cargando && !error && PLANS.length === 0 && (
+          <p
+            className="text-center text-sm py-16"
+            style={{ color: "#94A3B8" }}
+          >
+            Aún no hay planes disponibles.
+          </p>
+        )}
+
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 items-end pt-6">
           {PLANS.map((plan) => (
-            <PlanCard key={plan.id} plan={plan} annual={annual} onSelect={handleSelect} />
+            <PlanCard
+              key={plan.id}
+              plan={plan}
+              annual={annual}
+              onSelect={handleSelect}
+            />
           ))}
         </div>
 
@@ -582,44 +664,77 @@ export default function Plans({ onHome, onLogin, onSignUp, onCheckout }: PlansPr
       <ComparisonTable plans={PLANS} />
       <FAQ />
 
-      {/* CTA footer */}
-      <section
-        className="py-16 text-center px-6"
-        style={{
-          background: "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)",
-        }}
-      >
-        <h2
-          className="text-2xl font-extrabold mb-3 text-white"
-          style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-        >
-          ¿Todavía no te decides?
-        </h2>
-        <p className="text-sm mb-7" style={{ color: "#94A3B8" }}>
-          Empieza con el plan Gratis y cambia cuando lo necesites. Sin tarjeta de crédito.
-        </p>
-        <button
-          onClick={onSignUp}
-          className="inline-flex items-center gap-2 text-sm font-bold px-8 py-3.5 rounded-xl text-white transition-all duration-150"
+      {/* CTA footer: solo en la página pública */}
+      {!inPanel && (
+        <section
+          className="py-16 text-center px-6"
           style={{
-            background: "linear-gradient(135deg, #2E9BFF 0%, #00D1C1 100%)",
-            boxShadow: "0 4px 20px rgba(46,155,255,0.35)",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "translateY(-1px)";
-            e.currentTarget.style.boxShadow = "0 8px 28px rgba(46,155,255,0.5)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "translateY(0)";
-            e.currentTarget.style.boxShadow = "0 4px 20px rgba(46,155,255,0.35)";
+            background: "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)",
           }}
         >
-          Crear cuenta gratis
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M3 8h10M9 4l4 4-4 4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-      </section>
+          <h2
+            className="text-2xl font-extrabold mb-3 text-white"
+            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+          >
+            ¿Todavía no te decides?
+          </h2>
+
+          <p className="text-sm mb-7" style={{ color: "#94A3B8" }}>
+            Empieza con el plan Gratis y cambia cuando lo necesites. Sin tarjeta de crédito.
+          </p>
+
+          <button
+            onClick={onSignUp}
+            className="inline-flex items-center gap-2 text-sm font-bold px-8 py-3.5 rounded-xl text-white transition-all duration-150"
+            style={{
+              background: "linear-gradient(135deg, #2E9BFF 0%, #00D1C1 100%)",
+              boxShadow: "0 4px 20px rgba(46,155,255,0.35)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "translateY(-1px)";
+              e.currentTarget.style.boxShadow =
+                "0 8px 28px rgba(46,155,255,0.5)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow =
+                "0 4px 20px rgba(46,155,255,0.35)";
+            }}
+          >
+            Crear cuenta gratis
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path
+                d="M3 8h10M9 4l4 4-4 4"
+                stroke="white"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        </section>
+      )}
     </div>
+  );
+
+  if (!inPanel) {
+    return contenido;
+  }
+
+  return (
+    <AppShell
+      activeNav="plans"
+      onNav={handleNav}
+      onLogout={async () => {
+        await logout();
+        navigate("/");
+      }}
+      onUpload={() => navigate("/archivos")}
+      headerTitle="Planes y precios"
+    >
+      <main className="flex-1 overflow-y-auto">
+        {contenido}
+      </main>
+    </AppShell>
   );
 }
