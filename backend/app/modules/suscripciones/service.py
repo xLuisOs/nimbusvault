@@ -48,8 +48,14 @@ def suscripcion_activa(db: Session, id_usuario: UUID) -> Suscripcion | None:
             sus.fecha_inicio = ahora()
             sus.fecha_fin = sus.fecha_inicio + timedelta(days=sus.plan.vigencia_dias)
         else:
-            # TODO Avance 2: renovación (RF-08) y definir qué pasa con los archivos
+            # RN-02: nadie se queda sin plan. Al vencer un plan de pago el usuario vuelve al Gratis sin perder
+            # nada: si sus archivos no caben en el nuevo espacio, solo se bloquean las subidas (la cuota ya lo
+            # controla) y puede verlos, descargarlos o borrarlos, o contratar otro plan.
             sus.estado = ESTADO_VENCIDA
+            db.flush()  # libera el índice «una activa por usuario» antes de crear la nueva
+            gratis = asignar_plan_gratis(db, db.get(Usuario, id_usuario))
+            if gratis is not None:
+                sus = gratis
         db.commit()
         if sus.estado != ESTADO_ACTIVA:
             return None
