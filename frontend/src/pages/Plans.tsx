@@ -457,15 +457,15 @@ function ComparisonTable({ plans }: { plans: PlanVista[] }) {
 const FAQS = [
   {
     q: "¿Puedo cambiar de plan en cualquier momento?",
-    a: "Sí. Puedes subir o bajar de plan desde tu panel. Los cambios aplican al inicio del siguiente ciclo.",
+    a: "Sí. Puedes subir o bajar de plan desde tu panel y el cambio aplica de inmediato. Para bajar de plan, tus archivos deben caber en el nuevo espacio.",
   },
   {
     q: "¿Hay contrato mínimo de permanencia?",
-    a: "No. Todos los planes son mes a mes (o anuales con descuento). Cancela cuando quieras sin penalización.",
+    a: "No. Todos los planes son mes a mes (o anuales con descuento) y puedes cambiar de plan cuando quieras, sin penalización. Si tu plan vence, vuelves al plan Gratis sin perder tus archivos.",
   },
   {
     q: "¿Qué pasa si supero mi límite de almacenamiento?",
-    a: "Recibirás una alerta al llegar al 80 %. Puedes ampliar espacio o pasar al plan superior antes de que se bloquee la carga.",
+    a: "Recibirás una alerta al llegar al 90 %. Puedes pasar a un plan superior antes de que se bloquee la carga de archivos.",
   },
 ];
 
@@ -586,7 +586,7 @@ export default function Plans({ onHome, onLogin, onSignUp, onCheckout, inPanel =
           className="text-base mb-10 max-w-lg mx-auto"
           style={{ color: "#64748B" }}
         >
-          Sin costes ocultos. Cancela cuando quieras. Empieza gratis hoy mismo.
+          Sin costes ocultos. Cambia de plan cuando quieras. Empieza gratis hoy mismo.
         </p>
 
         <BillingToggle
