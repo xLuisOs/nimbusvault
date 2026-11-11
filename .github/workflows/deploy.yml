@@ -1,24 +1,52 @@
 name: Deploy a producción
 
-# Se ejecuta solo con push o merge a main
+# Despliega en Render solo cuando el CI pasó en main (push o merge a main).
+# En Render los dos servicios tienen la rama main y el Auto-Deploy apagado: este workflow es quien despliega.
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
+  workflow_dispatch: # para volver a desplegar a mano desde la pestaña Actions
+
+# Un despliegue a la vez: si llegan dos merges seguidos, el segundo espera al primero
+concurrency:
+  group: deploy-produccion
+  cancel-in-progress: false
 
 jobs:
   deploy:
+    # Si las pruebas fallaron, no se despliega nada
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      # 1. Descargar el código del repo
+      # 1. Descargar exactamente el commit que pasó el CI
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
-      # 2. Verificar que la imagen Docker construye correctamente
-      #    (si falla aquí, no se despliega nada)
-      - name: Construir imagen Docker
-        working-directory: backend
-        run: docker build -t nimbusvault-api .
+      # 2. Verificar que las dos imágenes Docker construyen (si falla aquí, no se despliega nada)
+      - name: Construir imagen del backend
+        run: docker build -t nimbusvault-api backend
 
-      # 3. Disparar el despliegue en Render mediante el deploy hook
-      - name: Desplegar en Render
-        run: curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+      - name: Construir imagen del frontend
+        run: docker build -t nimbusvault-web frontend
+
+      # 3. Disparar el despliegue de cada servicio con su deploy hook (secretos del repositorio)
+      - name: Desplegar API en Render
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          test -n "$HOOK" || { echo "::error::Falta el secreto RENDER_DEPLOY_HOOK_URL"; exit 1; }
+          curl -fsS --max-time 60 -X POST "$HOOK" > /dev/null
+          echo "Despliegue de nimbusvault-api solicitado"
+
+      - name: Desplegar frontend en Render
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL_WEB }}
+        run: |
+          test -n "$HOOK" || { echo "::error::Falta el secreto RENDER_DEPLOY_HOOK_URL_WEB"; exit 1; }
+          curl -fsS --max-time 60 -X POST "$HOOK" > /dev/null
+          echo "Despliegue de nimbusvault-web solicitado"

@@ -1,4 +1,5 @@
 // Configuración de la cuenta: perfil, apariencia (claro/oscuro), seguridad, plan y eliminar la cuenta.
+// Perfil, Apariencia y Seguridad también se usan en la configuración del administrador (AdminConfig).
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -74,7 +75,7 @@ const PASSWORD_VALIDA = (v: string) => v.length >= 8 && /[A-Za-z]/.test(v) && /\
 
 // ── Perfil ────────────────────────────────────────────────────────────────────
 
-function Perfil() {
+export function Perfil() {
   const { usuario, recargarUsuario } = useAuth();
   const [nombre, setNombre] = useState(usuario?.nombre ?? "");
   const [aviso, setAviso] = useState<{ texto: string; error?: boolean }>({ texto: "" });
@@ -110,7 +111,7 @@ function Perfil() {
           </div>
           <div className="min-w-0">
             <p className="text-sm font-bold truncate" style={{ color: "var(--nv-text-1)" }}>{usuario.nombre}</p>
-            <p className="text-xs" style={{ color: "var(--nv-text-4)" }}>Cliente desde {formatoFecha(usuario.creado_en)}</p>
+            <p className="text-xs" style={{ color: "var(--nv-text-4)" }}>{usuario.rol === "ADMINISTRADOR" ? "Administrador" : "Cliente"} desde {formatoFecha(usuario.creado_en)}</p>
           </div>
         </div>
         <div className="grid sm:grid-cols-2 gap-4">
@@ -157,7 +158,7 @@ function MiniVista({ oscuro }: { oscuro: boolean }) {
   );
 }
 
-function Apariencia() {
+export function Apariencia() {
   const { preferencia, cambiar } = useTema();
   const sistemaOscuro = typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches;
 
@@ -362,7 +363,7 @@ function Sesiones({ version }: { version: number }) {
   );
 }
 
-function Seguridad() {
+export function Seguridad() {
   const [version, setVersion] = useState(0); // recarga las sesiones al cambiar la contraseña
   return (
     <Seccion titulo="Seguridad" descripcion="Tu contraseña y los dispositivos donde tienes la sesión abierta.">

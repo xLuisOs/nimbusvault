@@ -4,6 +4,7 @@ import AdminDashboard from "./AdminDashboard";
 import AdminUsers from "./AdminUsers";
 import AdminPlans from "./AdminPlans";
 import AdminInfra from "./AdminInfra";
+import AdminConfig from "./AdminConfig";
 
 interface AdminProps {
   onLogout: () => void;
@@ -19,5 +20,6 @@ export default function Admin({ onLogout }: AdminProps) {
   if (screen === "usuarios") return <AdminUsers  onNav={handleNav} onLogout={onLogout} />;
   if (screen === "planes")   return <AdminPlans  onNav={handleNav} onLogout={onLogout} />;
   if (screen === "infra")    return <AdminInfra  onNav={handleNav} onLogout={onLogout} />;
+  if (screen === "config")   return <AdminConfig onNav={handleNav} onLogout={onLogout} />;
   return <AdminDashboard onNav={handleNav} onLogout={onLogout} />;
 }

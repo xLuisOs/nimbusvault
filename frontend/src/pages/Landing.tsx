@@ -449,7 +449,7 @@ const FEATURES = [
   {
     Icon: IconScale,
     title: "Escalabilidad por planes",
-    desc: "Empieza con 5 GB gratuitos y sube a terabytes en un clic. Sin contratos, sin penalizaciones por reducir.",
+    desc: "Empieza con 5 GB gratuitos y sube hasta 500 GB en un clic. Sin contratos, sin penalizaciones por reducir.",
     color: "#00D1C1",
     bg: "#E0FBF9",
   },
@@ -617,7 +617,7 @@ function Pricing({ onSignUp, onPlans }: { onSignUp: () => void; onPlans: () => v
             Precios simples y predecibles
           </h2>
           <p className="text-base" style={{ color: "#334155" }}>
-            Sin costes ocultos. Sin sorpresas. Cancela cuando quieras.
+            Sin costes ocultos. Sin sorpresas. Cambia de plan cuando quieras.
           </p>
         </div>
 

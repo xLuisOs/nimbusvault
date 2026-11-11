@@ -6,13 +6,14 @@ import { iniciales } from "@/utils/format";
 
 // ── Nav ────────────────────────────────────────────────────────────────────────
 
-export type AdminNavId = "dashboard" | "usuarios" | "planes" | "infra";
+export type AdminNavId = "dashboard" | "usuarios" | "planes" | "infra" | "config";
 
 export const ADMIN_NAV: { id: AdminNavId; label: string; icon: string }[] = [
   { id: "dashboard", label: "Dashboard",       icon: "grid"   },
   { id: "usuarios",  label: "Usuarios",         icon: "users"  },
   { id: "planes",    label: "Planes",           icon: "layers" },
   { id: "infra",     label: "Infraestructura",  icon: "server" },
+  { id: "config",    label: "Configuración",    icon: "settings" },
 ];
 
 // ── Icons ──────────────────────────────────────────────────────────────────────
@@ -23,6 +24,7 @@ export function AdminIcon({ id, size = 20 }: { id: string; size?: number }) {
     users:   <><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" fill="none"/><circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.6" fill="none"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" fill="none"/></>,
     layers:  <><path d="M12 2L2 7l10 5 10-5-10-5ZM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill="none"/></>,
     server:  <><rect x="2" y="2" width="20" height="8" rx="2" stroke="currentColor" strokeWidth="1.6" fill="none"/><rect x="2" y="14" width="20" height="8" rx="2" stroke="currentColor" strokeWidth="1.6" fill="none"/><circle cx="6" cy="6" r="1.2" fill="currentColor"/><circle cx="6" cy="18" r="1.2" fill="currentColor"/></>,
+    settings:<><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6"/><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></>,
     logout:  <><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill="none"/></>,
     menu:    <><path d="M3 6h18M3 11h18M3 16h18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></>,
     plus:    <><path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></>,
