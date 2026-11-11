@@ -1,4 +1,4 @@
-// Destino de los roles que no tienen panel propio (por ahora SOPORTE).
+// Destino de un rol que no tenga panel propio.
 // Evita que ProtectedRoute los mande a una ruta que los vuelve a rechazar (bucle infinito).
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";

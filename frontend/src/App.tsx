@@ -22,6 +22,7 @@ import Payments from "@/pages/cliente/Payments";
 import Consumption from "@/pages/cliente/Consumption";
 import Configuracion from "@/pages/cliente/Configuracion";
 import Admin from "@/pages/admin/Admin";
+import Soporte from "@/pages/soporte/Soporte";
 import SinAcceso from "@/pages/SinAcceso";
 
 function useNavCliente() {
@@ -138,6 +139,12 @@ function AdminRoute() {
   return <Admin onLogout={async () => { await logout(); navigate("/"); }} />;
 }
 
+function SoporteRoute() {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+  return <Soporte onLogout={async () => { await logout(); navigate("/"); }} />;
+}
+
 export default function App() {
   const navigate = useNavigate();
   const nav = useNavCliente();
@@ -178,6 +185,11 @@ export default function App() {
       {/* Administrador */}
       <Route element={<ProtectedRoute roles={["ADMINISTRADOR"]} />}>
         <Route path="/admin" element={<AdminRoute />} />
+      </Route>
+
+      {/* Soporte */}
+      <Route element={<ProtectedRoute roles={["SOPORTE"]} />}>
+        <Route path="/soporte" element={<SoporteRoute />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
