@@ -8,6 +8,7 @@ from app.modules.auth.router import router as auth_router
 from app.modules.pagos.router import router as pagos_router
 from app.modules.planes.router import admin_router as admin_planes_router
 from app.modules.planes.router import router as planes_router
+from app.modules.soporte.router import router as soporte_router
 
 app = FastAPI(
     title=settings.app_name,
@@ -41,5 +42,6 @@ api.include_router(admin_planes_router)
 api.include_router(admin_router)
 api.include_router(almacenamiento_router)
 api.include_router(pagos_router)
+api.include_router(soporte_router)
 
 app.include_router(api)
