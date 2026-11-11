@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.security import decodificar_access_token
 from app.db.session import get_db
-from app.modules.auth.models import ESTADO_ACTIVO, ROL_ADMIN, ROL_CLIENTE, Usuario
+from app.modules.auth.models import ESTADO_ACTIVO, ROL_ADMIN, ROL_CLIENTE, ROL_SOPORTE, Usuario
 
 bearer = HTTPBearer(auto_error=False)
 
@@ -50,3 +50,6 @@ requiere_admin = requiere_rol(ROL_ADMIN, mensaje="No tienes permisos de administ
 
 # Archivos, consumo y pagos son del cliente: el admin y soporte no tienen almacenamiento propio
 requiere_cliente = requiere_rol(ROL_CLIENTE, mensaje="Esta función es solo para clientes")
+
+# La consola de soporte consulta clientes y ayuda con el acceso; no entra a archivos ni a funciones de administrador
+requiere_soporte = requiere_rol(ROL_SOPORTE, mensaje="Esta función es solo para soporte")
